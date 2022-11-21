@@ -54,6 +54,9 @@ public class SpecConfigReader {
       ImmutableSet.of(
           PRESET_KEY,
           CONFIG_NAME_KEY,
+          // EIP4844 keys can be ignored for now
+          "EIP4844_FORK_VERSION",
+          "EIP4844_FORK_EPOCH",
           // Unsupported, upcoming fork-related keys
           "SHARDING_FORK_VERSION",
           "SHARDING_FORK_EPOCH",
