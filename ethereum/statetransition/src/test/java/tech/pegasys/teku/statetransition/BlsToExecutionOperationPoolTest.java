@@ -80,7 +80,7 @@ public class BlsToExecutionOperationPoolTest {
         .thenReturn(SafeFuture.completedFuture(InternalValidationResult.ACCEPT));
     final SignedBlsToExecutionChange item = dataStructureUtil.randomSignedBlsToExecutionChange();
     final SafeFuture<?> future = pool.addLocal(item);
-    assertThat(future.isCompletedNormally()).isTrue();
+    assertThat(future).isCompleted();
     assertThat(pool.size()).isEqualTo(1);
     assertThat(pool.getAll()).containsExactly(item);
   }
@@ -89,8 +89,8 @@ public class BlsToExecutionOperationPoolTest {
   void shouldRejectDuplicateEntryFromPool() throws ExecutionException, InterruptedException {
     final SignedBlsToExecutionChange item = initPoolWithSingleItem();
 
-    final SafeFuture<InternalValidationResult> future2 = pool.addLocal(item);
-    assertThat(future2.get().code()).isEqualTo(InternalValidationResult.IGNORE.code());
+    final SafeFuture<InternalValidationResult> future = pool.addLocal(item);
+    assertThat(future.get().code()).isEqualTo(InternalValidationResult.IGNORE.code());
   }
 
   @Test
@@ -119,13 +119,13 @@ public class BlsToExecutionOperationPoolTest {
         .thenReturn(SafeFuture.completedFuture(InternalValidationResult.ACCEPT));
     final SignedBlsToExecutionChange item = dataStructureUtil.randomSignedBlsToExecutionChange();
     final SafeFuture<InternalValidationResult> future = pool.addLocal(item);
-    assertThat(future.isCompletedNormally()).isTrue();
+    assertThat(future).isCompleted();
     assertThat(pool.size()).isEqualTo(1);
     return item;
   }
 
   @Test
-  void shouldAddMaxItemsToPool() {
+  void shouldGetFullListFromPool() {
     final SignedBlsToExecutionChange item = initPoolWithSingleItem();
     when(validator.validateForGossip(any())).thenReturn(completedFuture(ACCEPT));
     when(validator.validateForBlockInclusion(any(), any())).thenReturn(Optional.empty());
