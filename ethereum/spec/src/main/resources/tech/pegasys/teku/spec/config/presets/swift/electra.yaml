@@ -5,6 +5,11 @@
 # 2**4 (= 16)
 MAX_EXECUTION_LAYER_EXITS: 16
 
+# Gwei(2**5 * 10**9) (= 32,000,000,000)
+MIN_ACTIVATION_BALANCE: "32000000000"
+# Max effective balance from electra
+MAX_EFFECTIVE_BALANCE_ELECTRA: "32000000000"
+
 # Execution
 # ---------------------------------------------------------------
 # [customized]
