@@ -22,6 +22,8 @@ public class SpecConfigElectraImpl extends DelegatingSpecConfigDeneb implements 
 
   private final Bytes4 electraForkVersion;
   private final UInt64 electraForkEpoch;
+  private final UInt64 minActivationBalance;
+  private final UInt64 maxEffectiveBalanceElectra;
 
   private final int maxDepositReceiptsPerPayload;
   private final int maxExecutionLayerExits;
@@ -30,11 +32,15 @@ public class SpecConfigElectraImpl extends DelegatingSpecConfigDeneb implements 
       final SpecConfigDeneb specConfig,
       final Bytes4 electraForkVersion,
       final UInt64 electraForkEpoch,
+      final UInt64 minActivationBalance,
+      final UInt64 maxEffectiveBalanceElectra,
       final int maxDepositReceiptsPerPayload,
       final int maxExecutionLayerExits) {
     super(specConfig);
     this.electraForkVersion = electraForkVersion;
     this.electraForkEpoch = electraForkEpoch;
+    this.minActivationBalance = minActivationBalance;
+    this.maxEffectiveBalanceElectra = maxEffectiveBalanceElectra;
     this.maxDepositReceiptsPerPayload = maxDepositReceiptsPerPayload;
     this.maxExecutionLayerExits = maxExecutionLayerExits;
   }
@@ -57,6 +63,16 @@ public class SpecConfigElectraImpl extends DelegatingSpecConfigDeneb implements 
   @Override
   public int getMaxExecutionLayerExits() {
     return maxExecutionLayerExits;
+  }
+
+  @Override
+  public UInt64 getMinActivationBalance() {
+    return minActivationBalance;
+  }
+
+  @Override
+  public UInt64 getMaxEffectiveBalanceElectra() {
+    return maxEffectiveBalanceElectra;
   }
 
   @Override

@@ -39,6 +39,10 @@ public interface SpecConfigElectra extends SpecConfigDeneb {
 
   int getMaxExecutionLayerExits();
 
+  UInt64 getMinActivationBalance();
+
+  UInt64 getMaxEffectiveBalanceElectra();
+
   @Override
   Optional<SpecConfigElectra> toVersionElectra();
 }

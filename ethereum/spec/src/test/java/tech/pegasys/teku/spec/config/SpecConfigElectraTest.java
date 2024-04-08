@@ -16,6 +16,7 @@ package tech.pegasys.teku.spec.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.TestSpecFactory;
 import tech.pegasys.teku.spec.util.DataStructureUtil;
@@ -82,6 +83,8 @@ public class SpecConfigElectraTest {
         denebConfig,
         dataStructureUtil.randomBytes4(),
         dataStructureUtil.randomUInt64(999_999),
+        UInt64.THIRTY_TWO_ETH,
+        UInt64.THIRTY_TWO_ETH.times(32),
         dataStructureUtil.randomPositiveInt(16),
         dataStructureUtil.randomPositiveInt(16)) {};
   }

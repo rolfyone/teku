@@ -1,5 +1,9 @@
 # Mainnet preset - Electra
 
+# Gwei(2**5 * 10**9) (= 32,000,000,000)
+MIN_ACTIVATION_BALANCE: "32000000000"
+# Max effective balance from electra
+MAX_EFFECTIVE_BALANCE_ELECTRA: "32000000000"
 # Execution
 # ---------------------------------------------------------------
 # 2**13 (= 8192) receipts
