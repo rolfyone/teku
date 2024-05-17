@@ -13,9 +13,19 @@
 
 package tech.pegasys.teku.spec.logic.versions.electra.helpers;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static tech.pegasys.teku.infrastructure.crypto.Hash.getSha256Instance;
+import static tech.pegasys.teku.spec.logic.common.helpers.MathHelpers.uint64ToBytes;
+
+import com.google.common.primitives.UnsignedBytes;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.Optional;
+import org.apache.tuweni.bytes.Bytes32;
+import tech.pegasys.teku.infrastructure.crypto.Sha256;
+import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.config.SpecConfig;
 import tech.pegasys.teku.spec.config.SpecConfigDeneb;
+import tech.pegasys.teku.spec.config.SpecConfigElectra;
 import tech.pegasys.teku.spec.datastructures.state.beaconstate.BeaconState;
 import tech.pegasys.teku.spec.datastructures.state.beaconstate.versions.electra.BeaconStateElectra;
 import tech.pegasys.teku.spec.logic.common.helpers.MiscHelpers;
@@ -49,6 +59,35 @@ public class MiscHelpersElectra extends MiscHelpersDeneb {
   @Override
   public Optional<MiscHelpersElectra> toVersionElectra() {
     return Optional.of(this);
+  }
+
+  @Override
+  public int computeProposerIndex(
+      final BeaconState state, final IntList indices, final Bytes32 seed) {
+    checkArgument(!indices.isEmpty(), "compute_proposer_index indices must not be empty");
+
+    final Sha256 sha256 = getSha256Instance();
+
+    int i = 0;
+    final int total = indices.size();
+    byte[] hash = null;
+    final UInt64 maxEffectiveBalanceElectra =
+        SpecConfigElectra.required(specConfig).getMaxEffectiveBalanceElectra();
+    while (true) {
+      final int candidateIndex = indices.getInt(computeShuffledIndex(i % total, total, seed));
+      if (i % 32 == 0) {
+        hash = sha256.digest(seed, uint64ToBytes(Math.floorDiv(i, 32L)));
+      }
+      final int randomByte = UnsignedBytes.toInt(hash[i % 32]);
+      final UInt64 effectiveBalance =
+          state.getValidators().get(candidateIndex).getEffectiveBalance();
+      if (effectiveBalance
+          .times(MAX_RANDOM_BYTE)
+          .isGreaterThanOrEqualTo(maxEffectiveBalanceElectra.times(randomByte))) {
+        return candidateIndex;
+      }
+      i++;
+    }
   }
 
   @Override
