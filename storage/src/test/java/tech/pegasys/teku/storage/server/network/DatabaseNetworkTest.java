@@ -130,7 +130,7 @@ public class DatabaseNetworkTest {
         new DatabaseNetwork(fork.toHexString(), eth1Address.toHexString());
 
     objectMapper.writerFor(DatabaseNetwork.class).writeValue(networkFile, databaseNetwork);
-    String networkContent = Files.readString(networkFile.toPath());
+    final String networkContent = Files.readString(networkFile.toPath());
 
     final DatabaseNetwork readDatabaseNetwork =
         objectMapper.readerFor(DatabaseNetwork.class).readValue(networkFile);
@@ -152,7 +152,7 @@ public class DatabaseNetworkTest {
         new DatabaseNetwork(fork.toHexString(), eth1Address.toHexString(), null);
 
     objectMapper.writerFor(DatabaseNetwork.class).writeValue(networkFile, databaseNetwork);
-    String networkContent = Files.readString(networkFile.toPath());
+    final String networkContent = Files.readString(networkFile.toPath());
 
     final DatabaseNetwork readDatabaseNetwork =
         objectMapper.readerFor(DatabaseNetwork.class).readValue(networkFile);
