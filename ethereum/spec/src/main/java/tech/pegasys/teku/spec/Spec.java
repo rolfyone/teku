@@ -511,7 +511,10 @@ public class Spec {
   }
 
   public Bytes4 computeForkDigest(final Bytes32 genesisValidatorsRoot, final UInt64 epoch) {
-    return MiscHelpersFulu.required(atEpoch(epoch).miscHelpers())
+    return forMilestone(FULU)
+        .miscHelpers()
+        .toVersionFulu()
+        .orElseThrow()
         .computeForkDigest(genesisValidatorsRoot, epoch);
   }
 
