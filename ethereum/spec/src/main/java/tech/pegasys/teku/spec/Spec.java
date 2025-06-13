@@ -20,6 +20,7 @@ import static tech.pegasys.teku.spec.SpecMilestone.CAPELLA;
 import static tech.pegasys.teku.spec.SpecMilestone.DENEB;
 import static tech.pegasys.teku.spec.SpecMilestone.ELECTRA;
 import static tech.pegasys.teku.spec.SpecMilestone.FULU;
+import static tech.pegasys.teku.spec.SpecMilestone.getHighestMilestone;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
@@ -511,10 +512,14 @@ public class Spec {
   }
 
   public Bytes4 computeForkDigest(final Bytes32 genesisValidatorsRoot, final UInt64 epoch) {
-    return forMilestone(FULU)
+    if (getHighestMilestone().isLessThan(FULU)) {
+      throw new IllegalArgumentException(
+          "Cannot call computeForkDigest in this way if fulu is not supported.");
+    }
+    return atEpoch(epoch)
         .miscHelpers()
         .toVersionFulu()
-        .orElseThrow()
+        .orElse(forMilestone(FULU).miscHelpers().toVersionFulu().orElseThrow())
         .computeForkDigest(genesisValidatorsRoot, epoch);
   }
 
