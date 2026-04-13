@@ -15,10 +15,12 @@ package tech.pegasys.teku.validator.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -152,32 +154,6 @@ public class ProposerPreferencesPublisherTest {
   }
 
   @TestTemplate
-  void shouldNotPublishTwiceInStartupEpoch() {
-    // First call publishes at slot 0 of epoch 5
-    final UInt64 firstSlotOfEpoch = spec.computeStartSlotAtEpoch(UInt64.valueOf(5));
-    final UInt64 nextEpoch = spec.computeEpochAtSlot(firstSlotOfEpoch).plus(1);
-    final UInt64 nextEpochSlot = spec.computeStartSlotAtEpoch(nextEpoch);
-
-    when(validatorApiChannel.getProposerDuties(eq(nextEpoch), eq(true)))
-        .thenReturn(
-            SafeFuture.completedFuture(
-                Optional.of(
-                    new ProposerDuties(
-                        dataStructureUtil.randomBytes32(),
-                        List.of(new ProposerDuty(publicKey, 42, nextEpochSlot)),
-                        false))));
-
-    publisher.onSlot(firstSlotOfEpoch);
-    verify(validatorApiChannel).sendSignedProposerPreferences(anyList());
-
-    // 3rd slot of same epoch should NOT trigger a second publish
-    final UInt64 thirdSlotOfSameEpoch = firstSlotOfEpoch.plus(2);
-    publisher.onSlot(thirdSlotOfSameEpoch);
-    // still only one invocation total
-    verify(validatorApiChannel).sendSignedProposerPreferences(anyList());
-  }
-
-  @TestTemplate
   void shouldNotPublishWhenNoDutiesForOurValidators() {
     final UInt64 firstSlotOfEpoch = spec.computeStartSlotAtEpoch(UInt64.valueOf(5));
     final UInt64 nextEpoch = UInt64.valueOf(6);
@@ -274,6 +250,56 @@ public class ProposerPreferencesPublisherTest {
     assertThat(published).hasSize(1);
     assertThat(published.getFirst().getMessage().getValidatorIndex())
         .isEqualTo(UInt64.valueOf(successfulValidatorIndex));
+  }
+
+  @TestTemplate
+  void shouldRepublishOnPossibleMissedEvents() {
+    final UInt64 firstSlotOfEpoch = spec.computeStartSlotAtEpoch(UInt64.valueOf(5));
+    final UInt64 nextEpoch = UInt64.valueOf(6);
+    final UInt64 nextEpochSlot = spec.computeStartSlotAtEpoch(nextEpoch);
+
+    when(validatorApiChannel.getProposerDuties(eq(nextEpoch), eq(true)))
+        .thenReturn(
+            SafeFuture.completedFuture(
+                Optional.of(
+                    new ProposerDuties(
+                        dataStructureUtil.randomBytes32(),
+                        List.of(new ProposerDuty(publicKey, 42, nextEpochSlot)),
+                        false))));
+
+    publisher.onSlot(firstSlotOfEpoch);
+    verify(validatorApiChannel).sendSignedProposerPreferences(anyList());
+
+    publisher.onPossibleMissedEvents();
+    verify(validatorApiChannel, times(2)).sendSignedProposerPreferences(anyList());
+  }
+
+  @TestTemplate
+  void shouldRepublishOnValidatorsAdded() {
+    final UInt64 firstSlotOfEpoch = spec.computeStartSlotAtEpoch(UInt64.valueOf(5));
+    final UInt64 nextEpoch = UInt64.valueOf(6);
+    final UInt64 nextEpochSlot = spec.computeStartSlotAtEpoch(nextEpoch);
+
+    when(validatorApiChannel.getProposerDuties(eq(nextEpoch), eq(true)))
+        .thenReturn(
+            SafeFuture.completedFuture(
+                Optional.of(
+                    new ProposerDuties(
+                        dataStructureUtil.randomBytes32(),
+                        List.of(new ProposerDuty(publicKey, 42, nextEpochSlot)),
+                        false))));
+
+    publisher.onSlot(firstSlotOfEpoch);
+    verify(validatorApiChannel).sendSignedProposerPreferences(anyList());
+
+    publisher.onValidatorsAdded();
+    verify(validatorApiChannel, times(2)).sendSignedProposerPreferences(anyList());
+  }
+
+  @TestTemplate
+  void shouldNotRepublishOnMissedEventsBeforeFirstSlot() {
+    publisher.onPossibleMissedEvents();
+    verify(validatorApiChannel, never()).getProposerDuties(any(), anyBoolean());
   }
 
   @TestTemplate
