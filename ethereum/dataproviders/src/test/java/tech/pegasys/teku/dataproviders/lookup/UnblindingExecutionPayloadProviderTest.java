@@ -48,7 +48,7 @@ class UnblindingExecutionPayloadProviderTest {
     final Bytes32 blockRoot = originalExecutionPayloadEnvelope.getBeaconBlockRoot();
 
     final SignedBlindedExecutionPayloadEnvelope blindedExecutionPayloadEnvelope =
-        originalExecutionPayloadEnvelope.toSignedBlindedExecutionPayloadEnvelope(
+        originalExecutionPayloadEnvelope.blind(
             SchemaDefinitionsGloas.required(
                 spec.atSlot(originalExecutionPayloadEnvelope.getSlot()).getSchemaDefinitions()));
 
@@ -98,7 +98,7 @@ class UnblindingExecutionPayloadProviderTest {
     final Bytes32 blockRoot = originalEnvelope.getBeaconBlockRoot();
 
     final SignedBlindedExecutionPayloadEnvelope blindedEnvelope =
-        originalEnvelope.toSignedBlindedExecutionPayloadEnvelope(
+        originalEnvelope.blind(
             SchemaDefinitionsGloas.required(
                 spec.atSlot(originalEnvelope.getSlot()).getSchemaDefinitions()));
 
@@ -124,7 +124,7 @@ class UnblindingExecutionPayloadProviderTest {
         SchemaDefinitionsGloas.required(
             spec.atSlot(originalEnvelope.getSlot()).getSchemaDefinitions());
     final SignedBlindedExecutionPayloadEnvelope blindedEnvelope =
-        originalEnvelope.toSignedBlindedExecutionPayloadEnvelope(schemaDefinitions);
+        originalEnvelope.blind(schemaDefinitions);
 
     // Two different beacon block roots referencing the same execution payload (equivocation)
     final Bytes32 blockRootA = dataStructureUtil.randomBytes32();
@@ -166,9 +166,9 @@ class UnblindingExecutionPayloadProviderTest {
         SchemaDefinitionsGloas.required(
             spec.atSlot(executionPayloadEnvelopeA.getSlot()).getSchemaDefinitions());
     final SignedBlindedExecutionPayloadEnvelope blindedExecutionPayloadEnvelopeA =
-        executionPayloadEnvelopeA.toSignedBlindedExecutionPayloadEnvelope(schemaDefinitionsGloas);
+        executionPayloadEnvelopeA.blind(schemaDefinitionsGloas);
     final SignedBlindedExecutionPayloadEnvelope blindedExecutionPayloadEnvelopeB =
-        executionPayloadEnvelopeB.toSignedBlindedExecutionPayloadEnvelope(schemaDefinitionsGloas);
+        executionPayloadEnvelopeB.blind(schemaDefinitionsGloas);
 
     final Map<Bytes32, SignedBlindedExecutionPayloadEnvelope> allBlinded =
         Map.of(
