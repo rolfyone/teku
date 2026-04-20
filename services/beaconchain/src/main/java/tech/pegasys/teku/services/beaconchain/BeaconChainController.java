@@ -2219,6 +2219,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
         blockImporter,
         blobSidecarManager,
         executionPayloadManager,
+        payloadAttestationPool,
         pendingBlocks,
         pendingAttestations,
         pendingPayloadAttestations,
