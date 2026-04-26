@@ -973,4 +973,33 @@ public class ChainDataProvider {
               Optional.of(new ColumnCustodyAtSlot(root, columns.orElse(List.of()), blobCount)));
         });
   }
+
+  public SafeFuture<Optional<ProposerGraffitiAtSlotResponse>> getProposerGraffitiAtSlot(
+      final String blockIdParam) {
+    final Optional<BeaconState> justifiedState =
+        recentChainData.getStore().getJustifiedStateIfAvailable();
+    if (justifiedState.isEmpty()) {
+      return SafeFuture.completedFuture(Optional.empty());
+    }
+    return blockSelectorFactory
+        .createSelectorForBlockId(blockIdParam)
+        .getBlock()
+        .thenApply(
+            maybeBlockAndMetadata ->
+                maybeBlockAndMetadata.map(
+                    blockAndMetaData ->
+                        new ProposerGraffitiAtSlotResponse(
+                            blockAndMetaData.getData().getSlot(),
+                            blockAndMetaData.getData().getProposerIndex(),
+                            Optional.ofNullable(
+                                blockAndMetaData.getData().getMessage().getBody().getGraffiti()),
+                            justifiedState
+                                .get()
+                                .getValidators()
+                                .get(blockAndMetaData.getData().getProposerIndex().intValue())
+                                .getWithdrawalCredentials())));
+  }
+
+  public record ProposerGraffitiAtSlotResponse(
+      UInt64 slot, UInt64 proposer, Optional<Bytes32> graffiti, Bytes32 withdrawalAddress) {}
 }

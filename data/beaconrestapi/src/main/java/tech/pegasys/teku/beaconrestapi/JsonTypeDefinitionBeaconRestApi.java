@@ -38,6 +38,7 @@ import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetEth1Data;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetEth1DataCache;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetEth1VotingSummary;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetFinalizedStateSlotBefore;
+import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetProposerGraffitiAtSlot;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetProposersData;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon.GetStateByBlockRoot;
 import tech.pegasys.teku.beaconrestapi.handlers.tekuv1.node.GetCustodyOverview;
@@ -342,6 +343,7 @@ public class JsonTypeDefinitionBeaconRestApi implements BeaconRestApi {
             .endpoint(new GetGlobalValidatorInclusion(dataProvider))
             .endpoint(new GetFinalizedStateSlotBefore(dataProvider))
             .endpoint(new GetValidatorInclusion(dataProvider))
+            .endpoint(new GetProposerGraffitiAtSlot(dataProvider))
             .endpoint(new AddPeer(dataProvider));
 
     builder = applyAddons(builder, config, spec, dataProvider, schemaCache);
