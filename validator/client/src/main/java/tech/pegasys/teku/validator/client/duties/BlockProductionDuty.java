@@ -39,6 +39,7 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadSummary;
 import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 import tech.pegasys.teku.spec.datastructures.state.ForkInfo;
 import tech.pegasys.teku.spec.datastructures.validator.BroadcastValidationLevel;
+import tech.pegasys.teku.validator.api.NodeSyncingException;
 import tech.pegasys.teku.validator.api.ValidatorApiChannel;
 import tech.pegasys.teku.validator.client.ForkProvider;
 import tech.pegasys.teku.validator.client.Validator;
@@ -85,7 +86,20 @@ public class BlockProductionDuty implements Duty {
   @Override
   public SafeFuture<DutyResult> performDuty() {
     LOG.trace("Creating block for validator {} at slot {}", validator.getPublicKey(), slot);
-    return forkProvider.getForkInfo(slot).thenCompose(this::produceBlock);
+    return validatorApiChannel
+        .isExecutionOptimistic()
+        .thenCompose(
+            executionOptimistic -> {
+              if (executionOptimistic) {
+                LOG.debug(
+                    "Skipping block production for validator {} at slot {} because execution is optimistic",
+                    validator.getPublicKey().toAbbreviatedString(),
+                    slot);
+                return NodeSyncingException.<DutyResult>failedFuture();
+              }
+              return forkProvider.getForkInfo(slot).thenCompose(this::produceBlock);
+            })
+        .exceptionally(this::handleBlockProductionError);
   }
 
   private SafeFuture<DutyResult> produceBlock(final ForkInfo forkInfo) {
@@ -106,16 +120,16 @@ public class BlockProductionDuty implements Duty {
                 validatorDutyMetrics.record(
                     () -> sendBlock(signedBlockContainer, forkInfo),
                     this,
-                    ValidatorDutyMetricsSteps.SEND))
-        .exceptionally(
-            error -> {
-              LOG.debug(
-                  "Block production error for validator {} at slot {}: {}",
-                  validator.getPublicKey().toAbbreviatedString(),
-                  slot,
-                  error);
-              return DutyResult.forError(validator.getPublicKey(), error);
-            });
+                    ValidatorDutyMetricsSteps.SEND));
+  }
+
+  private DutyResult handleBlockProductionError(final Throwable error) {
+    LOG.debug(
+        "Block production error for validator {} at slot {}: {}",
+        validator.getPublicKey().toAbbreviatedString(),
+        slot,
+        error);
+    return DutyResult.forError(validator.getPublicKey(), error);
   }
 
   private SafeFuture<BLSSignature> createRandaoReveal(final ForkInfo forkInfo) {

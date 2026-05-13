@@ -22,5 +22,11 @@ public interface RemoteValidatorApiChannel extends ValidatorApiChannel {
 
   HttpUrl getEndpoint();
 
+  @Override
+  default SafeFuture<Boolean> isExecutionOptimistic() {
+    return getSyncingStatus()
+        .thenApply(syncingStatus -> syncingStatus.getIsOptimistic().orElse(false));
+  }
+
   SafeFuture<SyncingStatus> getSyncingStatus();
 }

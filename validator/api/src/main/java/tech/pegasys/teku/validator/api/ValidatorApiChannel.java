@@ -107,6 +107,11 @@ public interface ValidatorApiChannel extends BuilderApiChannel, ChannelInterface
         }
 
         @Override
+        public SafeFuture<Boolean> isExecutionOptimistic() {
+          return SafeFuture.completedFuture(false);
+        }
+
+        @Override
         public SafeFuture<Optional<BlockContainerAndMetaData>> createUnsignedBlock(
             final UInt64 slot,
             final BLSSignature randaoReveal,
@@ -280,6 +285,8 @@ public interface ValidatorApiChannel extends BuilderApiChannel, ChannelInterface
   SafeFuture<Optional<PtcDuties>> getPtcDuties(UInt64 epoch, IntCollection validatorIndices);
 
   SafeFuture<Optional<PeerCount>> getPeerCount();
+
+  SafeFuture<Boolean> isExecutionOptimistic();
 
   SafeFuture<Optional<BlockContainerAndMetaData>> createUnsignedBlock(
       UInt64 slot,
