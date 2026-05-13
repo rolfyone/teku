@@ -908,7 +908,8 @@ public class BeaconChainController extends Service implements BeaconChainControl
   private void initDasSamplerManager() {
     if (spec.isMilestoneSupported(SpecMilestone.FULU)) {
       LOG.info("Activated DAS Sampler Manager for Fulu");
-      this.dasSamplerManager = new DasSamplerManager(() -> dataAvailabilitySampler, spec);
+      this.dasSamplerManager =
+          new DasSamplerManager(() -> dataAvailabilitySampler, spec, recentChainData);
     } else {
       LOG.info("Using NOOP DAS Sampler Manager");
       this.dasSamplerManager = DasSamplerManager.NOOP;
@@ -1142,6 +1143,8 @@ public class BeaconChainController extends Service implements BeaconChainControl
             DEFAULT_MIN_WAIT_MILLIS,
             DEFAULT_TARGET_WAIT_MILLIS);
 
+    final BlockImportChannel dasBlockImportChannel =
+        eventChannels.getPublisher(BlockImportChannel.class, beaconAsyncRunner);
     final DasSamplerBasic dasSampler =
         new DasSamplerBasic(
             spec,
@@ -1152,7 +1155,8 @@ public class BeaconChainController extends Service implements BeaconChainControl
             recoveringSidecarRetriever,
             custodyGroupCountManager,
             recentChainData,
-            beaconConfig.p2pConfig().isColumnsDataAvailabilityHalfCheckEnabled());
+            beaconConfig.p2pConfig().isColumnsDataAvailabilityHalfCheckEnabled(),
+            dasBlockImportChannel);
     LOG.info(
         "DAS Basic Sampler initialized with {} groups to sample",
         custodyGroupCountManager.getSamplingGroupCount());
