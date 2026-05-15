@@ -21,6 +21,7 @@ import com.google.common.annotations.VisibleForTesting;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -685,6 +686,10 @@ public class CombinedChainDataClient {
 
   public Optional<UInt64> getCustodyGroupCount() {
     return recentChainData.getCustodyGroupCount();
+  }
+
+  public SafeFuture<Map<String, Long>> getColumnCounts(final Optional<String> maybeColumnFilter) {
+    return historicalChainData.getColumnCounts(maybeColumnFilter);
   }
 
   public SafeFuture<Optional<BeaconBlockSummary>> getEarliestAvailableBlockSummary() {

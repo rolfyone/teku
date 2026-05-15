@@ -65,6 +65,7 @@ import tech.pegasys.teku.statetransition.payloadattestation.PayloadAttestationPo
 import tech.pegasys.teku.statetransition.synccommittee.SyncCommitteeContributionPool;
 import tech.pegasys.teku.statetransition.validation.InternalValidationResult;
 import tech.pegasys.teku.statetransition.validatorcache.ActiveValidatorChannel;
+import tech.pegasys.teku.storage.client.CombinedChainDataClient;
 import tech.pegasys.teku.storage.client.RecentChainData;
 import tech.pegasys.teku.validator.api.SubmitDataError;
 
@@ -83,6 +84,7 @@ public class NodeDataProvider {
   private final ProposersDataManager proposersDataManager;
   private final ForkChoiceNotifier forkChoiceNotifier;
   private final RecentChainData recentChainData;
+  private final CombinedChainDataClient combinedChainDataClient;
   private final DataColumnSidecarManager dataColumnSidecarManager;
   private final CustodyGroupCountManager custodyGroupCountManager;
   private final PayloadAttestationPool payloadAttestationPool;
@@ -102,6 +104,7 @@ public class NodeDataProvider {
       final ProposersDataManager proposersDataManager,
       final ForkChoiceNotifier forkChoiceNotifier,
       final RecentChainData recentChainData,
+      final CombinedChainDataClient combinedChainDataClient,
       final DataColumnSidecarManager dataColumnSidecarManager,
       final CustodyGroupCountManager custodyGroupCountManager,
       final PayloadAttestationPool payloadAttestationPool,
@@ -119,6 +122,7 @@ public class NodeDataProvider {
     this.proposersDataManager = proposersDataManager;
     this.forkChoiceNotifier = forkChoiceNotifier;
     this.recentChainData = recentChainData;
+    this.combinedChainDataClient = combinedChainDataClient;
     this.dataColumnSidecarManager = dataColumnSidecarManager;
     this.custodyGroupCountManager = custodyGroupCountManager;
     this.payloadAttestationPool = payloadAttestationPool;
@@ -138,6 +142,10 @@ public class NodeDataProvider {
 
   public Set<UInt64> getCustodyColumnIndices() {
     return custodyGroupCountManager.getCustodyColumnIndices();
+  }
+
+  public SafeFuture<Map<String, Long>> getColumnCounts(final Optional<String> maybeColumnFilter) {
+    return combinedChainDataClient.getColumnCounts(maybeColumnFilter);
   }
 
   private ObjectAndMetaData<List<Attestation>> lookupMetaData(

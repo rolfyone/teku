@@ -167,6 +167,11 @@ public class ThrottlingStorageQueryChannel implements StorageQueryChannel {
   }
 
   @Override
+  public SafeFuture<Map<String, Long>> getColumnCounts(final Optional<String> maybeColumnFilter) {
+    return taskQueue.queueTask(() -> delegate.getColumnCounts(maybeColumnFilter));
+  }
+
+  @Override
   public SafeFuture<Optional<SignedBeaconBlock>> getNonCanonicalBlockByRoot(
       final Bytes32 blockRoot) {
     return taskQueue.queueTask(() -> delegate.getNonCanonicalBlockByRoot(blockRoot));

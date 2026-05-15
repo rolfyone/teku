@@ -305,6 +305,11 @@ public class ChainStorage
   }
 
   @Override
+  public SafeFuture<Map<String, Long>> getColumnCounts(final Optional<String> maybeColumnFilter) {
+    return SafeFuture.of(() -> database.getColumnCounts(maybeColumnFilter));
+  }
+
+  @Override
   public SafeFuture<Optional<SignedBeaconBlock>> getNonCanonicalBlockByRoot(
       final Bytes32 blockRoot) {
     return SafeFuture.of(() -> database.getNonCanonicalBlockByRoot(blockRoot));

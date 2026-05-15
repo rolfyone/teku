@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -53,6 +54,7 @@ import tech.pegasys.teku.statetransition.payloadattestation.PayloadAttestationPo
 import tech.pegasys.teku.statetransition.synccommittee.SyncCommitteeContributionPool;
 import tech.pegasys.teku.statetransition.validation.InternalValidationResult;
 import tech.pegasys.teku.statetransition.validatorcache.ActiveValidatorChannel;
+import tech.pegasys.teku.storage.client.CombinedChainDataClient;
 import tech.pegasys.teku.storage.client.RecentChainData;
 import tech.pegasys.teku.validator.api.SubmitDataError;
 
@@ -73,6 +75,8 @@ public class NodeDataProviderTest {
       mock(CustodyGroupCountManager.class);
   private final PayloadAttestationPool payloadAttestationPool = mock(PayloadAttestationPool.class);
   private final RecentChainData recentChainData = mock(RecentChainData.class);
+  private final CombinedChainDataClient combinedChainDataClient =
+      mock(CombinedChainDataClient.class);
 
   private final OperationPool<AttesterSlashing> attesterSlashingPool = mock(OperationPool.class);
 
@@ -104,10 +108,24 @@ public class NodeDataProviderTest {
             proposersDataManager,
             forkChoiceNotifier,
             recentChainData,
+            combinedChainDataClient,
             dataColumnSidecarManager,
             custodyGroupCountManager,
             payloadAttestationPool,
             spec);
+  }
+
+  @Test
+  void shouldGetColumnCounts() throws ExecutionException, InterruptedException {
+    final Map<String, Long> columnCounts = Map.of("HOT_BLOCKS_BY_ROOT", 3L);
+    final Optional<String> maybeColumnFilter = Optional.of("HOT");
+    when(combinedChainDataClient.getColumnCounts(maybeColumnFilter))
+        .thenReturn(SafeFuture.completedFuture(columnCounts));
+
+    final SafeFuture<Map<String, Long>> future = provider.getColumnCounts(maybeColumnFilter);
+
+    assertThat(future).isCompleted();
+    assertThat(future.get()).isEqualTo(columnCounts);
   }
 
   @Test
@@ -254,6 +272,7 @@ public class NodeDataProviderTest {
             proposersDataManager,
             forkChoiceNotifier,
             recentChainData,
+            combinedChainDataClient,
             dataColumnSidecarManager,
             custodyGroupCountManager,
             payloadAttestationPool,

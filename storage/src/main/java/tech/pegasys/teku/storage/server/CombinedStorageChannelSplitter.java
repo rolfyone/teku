@@ -209,6 +209,11 @@ public class CombinedStorageChannelSplitter implements CombinedStorageChannel {
   }
 
   @Override
+  public SafeFuture<Map<String, Long>> getColumnCounts(final Optional<String> maybeColumnFilter) {
+    return asyncRunner.runAsync(() -> queryDelegate.getColumnCounts(maybeColumnFilter));
+  }
+
+  @Override
   public SafeFuture<Optional<UInt64>> getFinalizedSlotByStateRoot(final Bytes32 stateRoot) {
     return asyncRunner.runAsync(() -> queryDelegate.getFinalizedSlotByStateRoot(stateRoot));
   }

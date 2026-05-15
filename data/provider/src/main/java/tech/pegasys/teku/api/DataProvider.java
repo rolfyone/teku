@@ -263,6 +263,7 @@ public class DataProvider {
               proposersDataManager,
               forkChoiceNotifier,
               recentChainData,
+              combinedChainDataClient,
               dataColumnSidecarManager,
               custodyGroupCountManager,
               payloadAttestationPool,
