@@ -13,17 +13,24 @@
 
 package tech.pegasys.teku.beaconrestapi.handlers.v4.validator;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.when;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_BAD_REQUEST;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_INTERNAL_SERVER_ERROR;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_NOT_ACCEPTABLE;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_NOT_IMPLEMENTED;
+import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_OK;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_SERVICE_UNAVAILABLE;
 import static tech.pegasys.teku.infrastructure.http.RestApiConstants.RANDAO_REVEAL;
 import static tech.pegasys.teku.infrastructure.http.RestApiConstants.SLOT;
+import static tech.pegasys.teku.infrastructure.restapi.MetadataTestUtil.getResponseSszFromMetadata;
+import static tech.pegasys.teku.infrastructure.restapi.MetadataTestUtil.getResponseStringFromMetadata;
 import static tech.pegasys.teku.infrastructure.restapi.MetadataTestUtil.verifyMetadataErrorResponse;
+import static tech.pegasys.teku.spec.SpecMilestone.DENEB;
+import static tech.pegasys.teku.spec.SpecMilestone.GLOAS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import tech.pegasys.teku.beaconrestapi.AbstractMigratedBeaconHandlerTest;
@@ -33,19 +40,48 @@ import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.SpecMilestone;
 import tech.pegasys.teku.spec.TestSpecContext;
 import tech.pegasys.teku.spec.TestSpecInvocationContextProvider;
+import tech.pegasys.teku.spec.datastructures.blocks.BlockContainer;
+import tech.pegasys.teku.spec.datastructures.metadata.BlockContainerAndMetaData;
 
 @TestSpecContext(allMilestones = true)
 public class GetNewBlockV4Test extends AbstractMigratedBeaconHandlerTest {
 
+  private SpecMilestone specMilestone;
   protected final BLSSignature signature = BLSTestUtil.randomSignature(1234);
 
   @BeforeEach
   public void setup(final TestSpecInvocationContextProvider.SpecContext specContext) {
     setSpec(specContext.getSpec());
+    specMilestone = specContext.getSpecMilestone();
     setHandler(new GetNewBlockV4(validatorDataProvider, schemaDefinitionCache));
     request.setPathParameter(SLOT, "1");
     request.setQueryParameter(RANDAO_REVEAL, signature.toBytesCompressed().toHexString());
     when(validatorDataProvider.getMilestoneAtSlot(UInt64.ONE)).thenReturn(SpecMilestone.ALTAIR);
+  }
+
+  @TestTemplate
+  void metadata_shouldHandle200() throws JsonProcessingException {
+    final BlockContainerAndMetaData blockContainerAndMetaData = randomBlockContainerAndMetaData();
+    final String data = getResponseStringFromMetadata(handler, SC_OK, blockContainerAndMetaData);
+    assertThat(data).contains("\"version\":");
+    assertThat(data).contains("\"data\":");
+  }
+
+  @TestTemplate
+  void metadata_shouldHandle200OctetStream() throws JsonProcessingException {
+    final BlockContainerAndMetaData blockContainerAndMetaData = randomBlockContainerAndMetaData();
+    final byte[] data = getResponseSszFromMetadata(handler, SC_OK, blockContainerAndMetaData);
+    assertThat(Bytes.of(data)).isEqualTo(blockContainerAndMetaData.blockContainer().sszSerialize());
+  }
+
+  // For DENEB through FULU, the unblinded block container is BlockContents (block + blobs).
+  // For all other milestones, it is a plain BeaconBlock.
+  private BlockContainerAndMetaData randomBlockContainerAndMetaData() {
+    if (specMilestone.isGreaterThanOrEqualTo(DENEB) && specMilestone.isLessThan(GLOAS)) {
+      final BlockContainer blockContents = dataStructureUtil.randomBlockContents(UInt64.ONE);
+      return dataStructureUtil.randomBlockContainerAndMetaData(blockContents, UInt64.ONE);
+    }
+    return dataStructureUtil.randomBlockContainerAndMetaData(UInt64.ONE);
   }
 
   @TestTemplate
