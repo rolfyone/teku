@@ -30,6 +30,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.deneb.Bli
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BeaconBlockBodySchemaElectra;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BlindedBeaconBlockBodySchemaElectra;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.gloas.BeaconBlockBodySchemaGloas;
+import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.heze.BeaconBlockBodySchemaHeze;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.Deposit;
@@ -88,6 +89,10 @@ public interface BeaconBlockBodySchema<T extends BeaconBlockBody> extends SszCon
   }
 
   default Optional<BeaconBlockBodySchemaGloas<?>> toVersionGloas() {
+    return Optional.empty();
+  }
+
+  default Optional<BeaconBlockBodySchemaHeze<?>> toVersionHeze() {
     return Optional.empty();
   }
 

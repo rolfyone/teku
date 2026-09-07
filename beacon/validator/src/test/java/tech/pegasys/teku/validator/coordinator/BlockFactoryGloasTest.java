@@ -101,6 +101,7 @@ public class BlockFactoryGloasTest extends AbstractBlockFactoryTest {
             depositProvider,
             eth1DataCache,
             graffitiBuilder,
+            new ReportingBuilder(true),
             forkChoiceNotifier,
             executionLayer,
             executionPayloadBidManager,

@@ -31,6 +31,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.deneb.Bli
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BeaconBlockBodyElectra;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BlindedBeaconBlockBodyElectra;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.gloas.BeaconBlockBodyGloas;
+import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.heze.BeaconBlockBodyHeze;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestation;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayload;
@@ -152,6 +153,10 @@ public interface BeaconBlockBody extends SszContainer {
   }
 
   default Optional<BeaconBlockBodyGloas> toVersionGloas() {
+    return Optional.empty();
+  }
+
+  default Optional<BeaconBlockBodyHeze> toVersionHeze() {
     return Optional.empty();
   }
 }

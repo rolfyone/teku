@@ -311,6 +311,7 @@ import tech.pegasys.teku.validator.coordinator.ExecutionPayloadFactoryGloas;
 import tech.pegasys.teku.validator.coordinator.FutureBlockProductionPreparationTrigger;
 import tech.pegasys.teku.validator.coordinator.GraffitiBuilder;
 import tech.pegasys.teku.validator.coordinator.MilestoneBasedBlockFactory;
+import tech.pegasys.teku.validator.coordinator.ReportingBuilder;
 import tech.pegasys.teku.validator.coordinator.StoredLatestCanonicalBlockUpdater;
 import tech.pegasys.teku.validator.coordinator.ValidatorApiHandler;
 import tech.pegasys.teku.validator.coordinator.performance.DefaultPerformanceTracker;
@@ -1846,6 +1847,9 @@ public class BeaconChainController extends Service implements BeaconChainControl
     final GraffitiBuilder graffitiBuilder =
         new GraffitiBuilder(beaconConfig.validatorConfig().getClientGraffitiAppendFormat());
     eventChannels.subscribe(ExecutionClientVersionChannel.class, graffitiBuilder);
+    final ReportingBuilder reportingBuilder =
+        new ReportingBuilder(beaconConfig.validatorConfig().isReportingEnabled());
+    eventChannels.subscribe(ExecutionClientVersionChannel.class, reportingBuilder);
     eventChannels.subscribe(
         ExecutionClientVersionChannel.class, dataProvider.getExecutionClientDataProvider());
     final ExecutionClientVersionProvider executionClientVersionProvider =
@@ -1868,6 +1872,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
                 depositProvider,
                 eth1DataCache,
                 graffitiBuilder,
+                reportingBuilder,
                 forkChoiceNotifier,
                 executionLayerBlockProductionManager,
                 executionPayloadBidManager,

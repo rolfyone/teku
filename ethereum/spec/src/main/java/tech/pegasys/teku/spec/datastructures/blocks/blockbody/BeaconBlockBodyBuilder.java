@@ -101,5 +101,13 @@ public interface BeaconBlockBodyBuilder {
 
   BeaconBlockBodyBuilder parentExecutionRequests(ExecutionRequests parentExecutionRequests);
 
+  default boolean supportsReporting() {
+    return false;
+  }
+
+  default BeaconBlockBodyBuilder reporting(final Bytes32 reporting) {
+    return this;
+  }
+
   BeaconBlockBody build();
 }

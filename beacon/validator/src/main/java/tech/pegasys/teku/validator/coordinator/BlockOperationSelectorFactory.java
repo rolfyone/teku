@@ -107,6 +107,7 @@ public class BlockOperationSelectorFactory {
   private final DepositProvider depositProvider;
   private final Eth1DataCache eth1DataCache;
   private final GraffitiBuilder graffitiBuilder;
+  private final ReportingBuilder reportingBuilder;
   private final ForkChoiceNotifier forkChoiceNotifier;
   private final ExecutionLayerBlockProductionManager executionLayerBlockProductionManager;
   private final MetricsHistogram dataColumnSidecarComputationTimeSeconds;
@@ -125,6 +126,7 @@ public class BlockOperationSelectorFactory {
       final DepositProvider depositProvider,
       final Eth1DataCache eth1DataCache,
       final GraffitiBuilder graffitiBuilder,
+      final ReportingBuilder reportingBuilder,
       final ForkChoiceNotifier forkChoiceNotifier,
       final ExecutionLayerBlockProductionManager executionLayerBlockProductionManager,
       final ExecutionPayloadBidManager executionPayloadBidManager,
@@ -142,6 +144,7 @@ public class BlockOperationSelectorFactory {
     this.depositProvider = depositProvider;
     this.eth1DataCache = eth1DataCache;
     this.graffitiBuilder = graffitiBuilder;
+    this.reportingBuilder = reportingBuilder;
     this.forkChoiceNotifier = forkChoiceNotifier;
     this.executionLayerBlockProductionManager = executionLayerBlockProductionManager;
     this.executionPayloadBidManager = executionPayloadBidManager;
@@ -308,6 +311,11 @@ public class BlockOperationSelectorFactory {
       if (bodyBuilder.supportsPayloadAttestations()) {
         bodyBuilder.payloadAttestations(
             payloadAttestationPool.getPayloadAttestationsForBlock(blockSlotState, parentRoot));
+      }
+
+      // Post-Heze: EIP-8359 client reporting field
+      if (bodyBuilder.supportsReporting()) {
+        bodyBuilder.reporting(reportingBuilder.buildReporting());
       }
 
       return SafeFuture.allOfFailFast(

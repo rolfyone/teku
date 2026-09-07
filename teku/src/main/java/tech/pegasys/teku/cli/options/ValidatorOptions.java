@@ -73,6 +73,17 @@ public class ValidatorOptions {
       ValidatorConfig.DEFAULT_CLIENT_GRAFFITI_APPEND_FORMAT;
 
   @Option(
+      names = {"--validators-reporting-enabled"},
+      paramLabel = "<BOOLEAN>",
+      showDefaultValue = Visibility.ALWAYS,
+      fallbackValue = "true",
+      description =
+          "Populate the EIP-8359 reporting field in proposed blocks. "
+              + "Reports the CL/EL client pair for aggregate client diversity visibility.",
+      arity = "0..1")
+  private boolean reportingEnabled = ValidatorConfig.DEFAULT_REPORTING_ENABLED;
+
+  @Option(
       names = {"--validators-performance-tracking-mode"},
       paramLabel = "<TRACKING_MODE>",
       description =
@@ -212,7 +223,8 @@ public class ValidatorOptions {
                 .shutdownWhenValidatorSlashedEnabled(shutdownWhenValidatorSlashed)
                 .executorMaxQueueSize(executorMaxQueueSize)
                 .beaconApiExecutorThreads(beaconApiExecutorThreads)
-                .beaconApiReadinessExecutorThreads(beaconApiReadinessExecutorThreads));
+                .beaconApiReadinessExecutorThreads(beaconApiReadinessExecutorThreads)
+                .reportingEnabled(reportingEnabled));
     validatorProposerOptions.configure(builder);
     validatorKeysOptions.configure(builder);
     builderOptions.configure(builder);

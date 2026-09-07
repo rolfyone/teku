@@ -141,6 +141,7 @@ import tech.pegasys.teku.spec.config.SpecConfigDeneb;
 import tech.pegasys.teku.spec.config.SpecConfigElectra;
 import tech.pegasys.teku.spec.config.SpecConfigFulu;
 import tech.pegasys.teku.spec.config.SpecConfigGloas;
+import tech.pegasys.teku.spec.config.SpecConfigHeze;
 import tech.pegasys.teku.spec.constants.NetworkConstants;
 import tech.pegasys.teku.spec.datastructures.blobs.versions.deneb.BlobKzgCommitmentsSchemaDeneb;
 import tech.pegasys.teku.spec.datastructures.blobs.versions.deneb.BlobSchema;
@@ -165,6 +166,7 @@ import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.deneb.Bli
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BeaconBlockBodySchemaElectraImpl;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.electra.BlindedBeaconBlockBodySchemaElectraImpl;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.gloas.BeaconBlockBodySchemaGloasImpl;
+import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.heze.BeaconBlockBodySchemaHezeImpl;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.phase0.BeaconBlockBodySchemaPhase0;
 import tech.pegasys.teku.spec.datastructures.blocks.versions.deneb.BlockContentsSchemaDeneb;
 import tech.pegasys.teku.spec.datastructures.blocks.versions.deneb.SignedBlockContentsSchemaDeneb;
@@ -805,6 +807,11 @@ public class SchemaRegistryBuilder {
             (registry, specConfig, schemaName) ->
                 BeaconBlockBodySchemaGloasImpl.create(
                     SpecConfigGloas.required(specConfig), schemaName, registry))
+        .withCreator(
+            HEZE,
+            (registry, specConfig, schemaName) ->
+                BeaconBlockBodySchemaHezeImpl.create(
+                    SpecConfigHeze.required(specConfig), schemaName, registry))
         .build();
   }
 

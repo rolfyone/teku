@@ -18,6 +18,8 @@ import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.INCLUSION_LIST
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.SIGNED_INCLUSION_LIST_SCHEMA;
 
 import java.util.Optional;
+import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBodyBuilder;
+import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.heze.BeaconBlockBodyBuilderHeze;
 import tech.pegasys.teku.spec.datastructures.execution.versions.heze.InclusionListSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.heze.SignedInclusionListSchema;
 import tech.pegasys.teku.spec.schemas.registry.SchemaRegistry;
@@ -48,6 +50,11 @@ public class SchemaDefinitionsHeze extends SchemaDefinitionsGloas {
 
   public SignedInclusionListSchema getSignedInclusionListSchema() {
     return signedInclusionListSchema;
+  }
+
+  @Override
+  public BeaconBlockBodyBuilder createBeaconBlockBodyBuilder() {
+    return new BeaconBlockBodyBuilderHeze(getBeaconBlockBodySchema().toVersionHeze().orElseThrow());
   }
 
   @Override

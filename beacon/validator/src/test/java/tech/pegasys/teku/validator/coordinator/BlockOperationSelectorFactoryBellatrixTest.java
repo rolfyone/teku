@@ -169,6 +169,7 @@ class BlockOperationSelectorFactoryBellatrixTest {
           depositProvider,
           eth1DataCache,
           graffitiBuilder,
+          new ReportingBuilder(true),
           forkChoiceNotifier,
           executionLayer,
           executionPayloadBidManager,

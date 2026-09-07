@@ -195,6 +195,7 @@ public class BlockFactoryDenebTest extends AbstractBlockFactoryTest {
             depositProvider,
             eth1DataCache,
             graffitiBuilder,
+            new ReportingBuilder(true),
             forkChoiceNotifier,
             executionLayer,
             executionPayloadBidManager,

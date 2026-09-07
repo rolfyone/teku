@@ -1564,6 +1564,9 @@ public final class DataStructureUtil {
               if (builder.supportsParentExecutionRequests()) {
                 builder.parentExecutionRequests(randomExecutionRequests(slot));
               }
+              if (builder.supportsReporting()) {
+                builder.reporting(Bytes32.ZERO);
+              }
               builderModifier.accept(builder);
               return SafeFuture.COMPLETE;
             })
@@ -1721,6 +1724,9 @@ public final class DataStructureUtil {
               if (builder.supportsParentExecutionRequests()) {
                 builder.parentExecutionRequests(randomExecutionRequests(slot));
               }
+              if (builder.supportsReporting()) {
+                builder.reporting(Bytes32.ZERO);
+              }
               builderModifier.accept(builder);
               return SafeFuture.COMPLETE;
             })
@@ -1790,6 +1796,9 @@ public final class DataStructureUtil {
               }
               if (builder.supportsParentExecutionRequests()) {
                 builder.parentExecutionRequests(randomExecutionRequests(slot));
+              }
+              if (builder.supportsReporting()) {
+                builder.reporting(Bytes32.ZERO);
               }
               builderModifier.accept(builder);
               return SafeFuture.COMPLETE;

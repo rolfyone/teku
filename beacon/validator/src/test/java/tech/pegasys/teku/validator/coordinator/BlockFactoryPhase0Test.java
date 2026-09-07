@@ -218,6 +218,7 @@ class BlockFactoryPhase0Test extends AbstractBlockFactoryTest {
             depositProvider,
             eth1DataCache,
             graffitiBuilder,
+            new ReportingBuilder(true),
             forkChoiceNotifier,
             executionLayer,
             executionPayloadBidManager,

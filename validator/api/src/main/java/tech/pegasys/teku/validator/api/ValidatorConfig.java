@@ -72,6 +72,7 @@ public class ValidatorConfig {
   public static final UInt64 DEFAULT_BUILDER_REGISTRATION_GAS_LIMIT = UInt64.valueOf(60_000_000);
   public static final boolean DEFAULT_OBOL_DVT_SELECTIONS_ENDPOINT_ENABLED = false;
   public static final boolean DEFAULT_ATTESTATIONS_V2_APIS_ENABLED = false;
+  public static final boolean DEFAULT_REPORTING_ENABLED = true;
   // Builder default options
   public static final UInt64 DEFAULT_BUILDER_MIN_BID = UInt64.ZERO;
   public static final UInt64 DEFAULT_BUILDER_BOOST_FACTOR = UInt64.valueOf(90);
@@ -119,6 +120,7 @@ public class ValidatorConfig {
   private final boolean isLocalSlashingProtectionSynchronizedModeEnabled;
   private final boolean dvtSelectionsEndpointEnabled;
   private final boolean attestationsV2ApisEnabled;
+  private final boolean reportingEnabled;
 
   // Builder options
   private final UInt64 builderMinBid;
@@ -166,6 +168,7 @@ public class ValidatorConfig {
       final boolean isLocalSlashingProtectionSynchronizedModeEnabled,
       final boolean dvtSelectionsEndpointEnabled,
       final boolean attestationsV2ApisEnabled,
+      final boolean reportingEnabled,
       final UInt64 builderMinBid,
       final UInt64 builderBoostFactor,
       final List<URL> builderUrls) {
@@ -214,6 +217,7 @@ public class ValidatorConfig {
         isLocalSlashingProtectionSynchronizedModeEnabled;
     this.dvtSelectionsEndpointEnabled = dvtSelectionsEndpointEnabled;
     this.attestationsV2ApisEnabled = attestationsV2ApisEnabled;
+    this.reportingEnabled = reportingEnabled;
     this.builderMinBid = builderMinBid;
     this.builderBoostFactor = builderBoostFactor;
     this.builderUrls = builderUrls;
@@ -399,6 +403,10 @@ public class ValidatorConfig {
     return attestationsV2ApisEnabled;
   }
 
+  public boolean isReportingEnabled() {
+    return reportingEnabled;
+  }
+
   public UInt64 getBuilderMinBid() {
     return builderMinBid;
   }
@@ -465,6 +473,7 @@ public class ValidatorConfig {
         DEFAULT_VALIDATOR_IS_LOCAL_SLASHING_PROTECTION_SYNCHRONIZED_ENABLED;
     private boolean dvtSelectionsEndpointEnabled = DEFAULT_OBOL_DVT_SELECTIONS_ENDPOINT_ENABLED;
     private boolean attestationsV2ApisEnabled = DEFAULT_ATTESTATIONS_V2_APIS_ENABLED;
+    private boolean reportingEnabled = DEFAULT_REPORTING_ENABLED;
     private UInt64 builderMinBid = DEFAULT_BUILDER_MIN_BID;
     private UInt64 builderBoostFactor = DEFAULT_BUILDER_BOOST_FACTOR;
     private List<URL> builderUrls = new ArrayList<>();
@@ -741,6 +750,11 @@ public class ValidatorConfig {
       return this;
     }
 
+    public Builder reportingEnabled(final boolean reportingEnabled) {
+      this.reportingEnabled = reportingEnabled;
+      return this;
+    }
+
     public Builder builderMinBid(final UInt64 builderMinBid) {
       this.builderMinBid = builderMinBid;
       return this;
@@ -802,6 +816,7 @@ public class ValidatorConfig {
           isLocalSlashingProtectionSynchronizedModeEnabled,
           dvtSelectionsEndpointEnabled,
           attestationsV2ApisEnabled,
+          reportingEnabled,
           builderMinBid,
           builderBoostFactor,
           builderUrls);
