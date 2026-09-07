@@ -1,0 +1,13 @@
+# EIP-8198 Quick Slots preset for minimal
+
+SLOT_DURATION_SCHEDULE:
+  - epoch: 0
+    slot_duration_ms: 6000
+    proposer_reorg_cutoff_ms: 1000
+    attestation_due_ms: 1500
+    aggregate_due_ms: 3000
+    sync_message_due_ms: 1500
+    contribution_due_ms: 3000
+    payload_due_ms: 3000
+    payload_attestation_due_ms: 4500
+    inclusion_list_due_ms: 4000

@@ -113,6 +113,7 @@ public class StateUpgradeTransitionTest {
             afterBeaconStateClass = BeaconStateGloas.class;
             yield TestSpecFactory.createMinimalWithHezeForkEpoch(milestoneTransitionEpoch);
           }
+          case EIP8198 -> throw new IllegalArgumentException("EIP8198 is an unsupported milestone");
         };
 
     genesis = createGenesis(spec);

@@ -265,6 +265,14 @@ public class Eth2NetworkOptions {
   private UInt64 hezeForkEpoch;
 
   @Option(
+      names = {"--Xnetwork-eip8198-fork-epoch"},
+      hidden = true,
+      paramLabel = "<epoch>",
+      description = "Override the EIP-8198 fork activation epoch.",
+      arity = "1")
+  private UInt64 eip8198ForkEpoch;
+
+  @Option(
       names = {"--Xnetwork-total-terminal-difficulty-override"},
       hidden = true,
       paramLabel = "<uint256>",
@@ -560,6 +568,19 @@ public class Eth2NetworkOptions {
         implicitEpochDefault(electraForkEpoch, builder::electraForkEpoch);
         implicitEpochDefault(fuluForkEpoch, builder::fuluForkEpoch);
         implicitEpochDefault(gloasForkEpoch, builder::gloasForkEpoch);
+      }
+    }
+    if (eip8198ForkEpoch != null) {
+      builder.eip8198ForkEpoch(eip8198ForkEpoch);
+      if (eip8198ForkEpoch.isZero()) {
+        implicitEpochDefault(altairForkEpoch, builder::altairForkEpoch);
+        implicitEpochDefault(bellatrixForkEpoch, builder::bellatrixForkEpoch);
+        implicitEpochDefault(capellaForkEpoch, builder::capellaForkEpoch);
+        implicitEpochDefault(denebForkEpoch, builder::denebForkEpoch);
+        implicitEpochDefault(electraForkEpoch, builder::electraForkEpoch);
+        implicitEpochDefault(fuluForkEpoch, builder::fuluForkEpoch);
+        implicitEpochDefault(gloasForkEpoch, builder::gloasForkEpoch);
+        implicitEpochDefault(hezeForkEpoch, builder::hezeForkEpoch);
       }
     }
     if (totalTerminalDifficultyOverride != null) {

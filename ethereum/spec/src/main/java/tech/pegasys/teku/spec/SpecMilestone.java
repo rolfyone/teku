@@ -33,7 +33,8 @@ public enum SpecMilestone {
   ELECTRA,
   FULU,
   GLOAS,
-  HEZE;
+  HEZE,
+  EIP8198;
 
   /**
    * Returns true if this milestone is at or after the supplied milestone ({@code other})
@@ -143,6 +144,7 @@ public enum SpecMilestone {
       case FULU -> specConfig.toVersionFulu().map(SpecConfig::getFuluForkVersion);
       case GLOAS -> specConfig.toVersionGloas().map(SpecConfig::getGloasForkVersion);
       case HEZE -> specConfig.toVersionHeze().map(SpecConfig::getHezeForkVersion);
+      case EIP8198 -> specConfig.toVersionEip8198().map(SpecConfig::getEip8198ForkVersion);
     };
   }
 
@@ -160,6 +162,7 @@ public enum SpecMilestone {
       case FULU -> specConfig.toVersionFulu().map(SpecConfig::getFuluForkEpoch);
       case GLOAS -> specConfig.toVersionGloas().map(SpecConfig::getGloasForkEpoch);
       case HEZE -> specConfig.toVersionHeze().map(SpecConfig::getHezeForkEpoch);
+      case EIP8198 -> specConfig.toVersionEip8198().map(SpecConfig::getEip8198ForkEpoch);
     };
   }
 

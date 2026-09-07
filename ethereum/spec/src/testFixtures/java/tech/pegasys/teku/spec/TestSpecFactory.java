@@ -52,6 +52,7 @@ public class TestSpecFactory {
       case FULU -> createMinimalFulu();
       case GLOAS -> createMinimalGloas();
       case HEZE -> createMinimalHeze();
+      case EIP8198 -> createMinimalEip8198();
     };
   }
 
@@ -66,6 +67,7 @@ public class TestSpecFactory {
       case FULU -> createMainnetFulu();
       case GLOAS -> createMainnetGloas();
       case HEZE -> createMainnetHeze();
+      case EIP8198 -> createMainnetEip8198();
     };
   }
 
@@ -157,6 +159,19 @@ public class TestSpecFactory {
     final SpecConfigAndParent<? extends SpecConfig> specConfig =
         getHezeSpecConfig(Eth2Network.MINIMAL);
     return create(specConfig, SpecMilestone.HEZE);
+  }
+
+  public static Spec createMinimalEip8198() {
+    final SpecConfigAndParent<? extends SpecConfig> specConfig =
+        getEip8198SpecConfig(Eth2Network.MINIMAL);
+    return create(specConfig, SpecMilestone.EIP8198);
+  }
+
+  public static Spec createMinimalWithEip8198ForkEpoch(final UInt64 eip8198ForkEpoch) {
+    final SpecConfigAndParent<? extends SpecConfig> config =
+        getEip8198SpecConfig(
+            Eth2Network.MINIMAL, builder -> builder.eip8198ForkEpoch(eip8198ForkEpoch));
+    return create(config, SpecMilestone.EIP8198);
   }
 
   public static Spec createMinimalHeze(final Consumer<SpecConfigBuilder> configAdapter) {
@@ -355,6 +370,12 @@ public class TestSpecFactory {
     return create(specConfig, SpecMilestone.HEZE);
   }
 
+  public static Spec createMainnetEip8198() {
+    final SpecConfigAndParent<? extends SpecConfig> specConfig =
+        getEip8198SpecConfig(Eth2Network.MAINNET);
+    return create(specConfig, SpecMilestone.EIP8198);
+  }
+
   public static Spec createPhase0(final SpecConfigAndParent<? extends SpecConfig> config) {
     return create(config, SpecMilestone.PHASE0);
   }
@@ -408,6 +429,9 @@ public class TestSpecFactory {
     }
     if (specMilestone.isGreaterThanOrEqualTo(SpecMilestone.HEZE)) {
       defaultModifier = defaultModifier.andThen(builder -> builder.hezeForkEpoch(UInt64.ZERO));
+    }
+    if (specMilestone.isGreaterThanOrEqualTo(SpecMilestone.EIP8198)) {
+      defaultModifier = defaultModifier.andThen(builder -> builder.eip8198ForkEpoch(UInt64.ZERO));
     }
 
     return create(
@@ -775,6 +799,37 @@ public class TestSpecFactory {
   private static SpecConfigAndParent<? extends SpecConfig> requireHeze(
       final SpecConfigAndParent<? extends SpecConfig> specConfigAndParent) {
     checkArgument(specConfigAndParent.specConfig().toVersionHeze().isPresent());
+    return specConfigAndParent;
+  }
+
+  private static SpecConfigAndParent<? extends SpecConfig> getEip8198SpecConfig(
+      final Eth2Network network) {
+    return getEip8198SpecConfig(network, configAdapter -> {});
+  }
+
+  private static SpecConfigAndParent<? extends SpecConfig> getEip8198SpecConfig(
+      final Eth2Network network, final Consumer<SpecConfigBuilder> configAdapter) {
+    return requireEip8198(
+        SpecConfigLoader.loadConfig(
+            network.configName(),
+            builder -> {
+              builder
+                  .altairForkEpoch(ZERO)
+                  .bellatrixForkEpoch(UInt64.ZERO)
+                  .capellaForkEpoch(UInt64.ZERO)
+                  .denebForkEpoch(UInt64.ZERO)
+                  .electraForkEpoch(UInt64.ZERO)
+                  .fuluForkEpoch(UInt64.ZERO)
+                  .gloasForkEpoch(UInt64.ZERO)
+                  .hezeForkEpoch(UInt64.ZERO)
+                  .eip8198ForkEpoch(ZERO);
+              configAdapter.accept(builder);
+            }));
+  }
+
+  private static SpecConfigAndParent<? extends SpecConfig> requireEip8198(
+      final SpecConfigAndParent<? extends SpecConfig> specConfigAndParent) {
+    checkArgument(specConfigAndParent.specConfig().toVersionEip8198().isPresent());
     return specConfigAndParent;
   }
 }

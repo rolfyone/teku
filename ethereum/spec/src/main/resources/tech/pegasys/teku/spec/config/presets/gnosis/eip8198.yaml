@@ -1,0 +1,13 @@
+# EIP-8198 Quick Slots preset for gnosis
+
+SLOT_DURATION_SCHEDULE:
+  - epoch: 0
+    slot_duration_ms: 5000
+    proposer_reorg_cutoff_ms: 833
+    attestation_due_ms: 1250
+    aggregate_due_ms: 2500
+    sync_message_due_ms: 1250
+    contribution_due_ms: 2500
+    payload_due_ms: 2500
+    payload_attestation_due_ms: 3750
+    inclusion_list_due_ms: 3333

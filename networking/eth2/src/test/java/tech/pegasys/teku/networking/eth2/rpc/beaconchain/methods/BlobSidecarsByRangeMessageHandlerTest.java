@@ -110,6 +110,7 @@ public class BlobSidecarsByRangeMessageHandlerTest {
           case FULU -> TestSpecFactory.createMinimalWithFuluForkEpoch(currentForkEpoch);
           case GLOAS -> TestSpecFactory.createMinimalWithGloasForkEpoch(currentForkEpoch);
           case HEZE -> TestSpecFactory.createMinimalWithHezeForkEpoch(currentForkEpoch);
+          case EIP8198 -> throw new IllegalArgumentException("EIP8198 is an unsupported milestone");
         };
 
     dataStructureUtil = new DataStructureUtil(spec);

@@ -48,6 +48,7 @@ import tech.pegasys.teku.spec.config.builder.AltairBuilder;
 import tech.pegasys.teku.spec.config.builder.BellatrixBuilder;
 import tech.pegasys.teku.spec.config.builder.CapellaBuilder;
 import tech.pegasys.teku.spec.config.builder.DenebBuilder;
+import tech.pegasys.teku.spec.config.builder.Eip8198Builder;
 import tech.pegasys.teku.spec.config.builder.ElectraBuilder;
 import tech.pegasys.teku.spec.config.builder.FuluBuilder;
 import tech.pegasys.teku.spec.config.builder.GloasBuilder;
@@ -120,6 +121,7 @@ public class SpecConfigReader {
       ImmutableMap.<String, Function<Object, ?>>builder()
           .put("BLOB_SCHEDULE", this::blobScheduleFromList)
           .put("GAS_LIMIT_SCHEDULE", this::gasLimitScheduleFromList)
+          .put("SLOT_DURATION_SCHEDULE", this::slotDurationScheduleFromList)
           .build();
 
   final SpecConfigBuilder configBuilder = SpecConfig.builder();
@@ -250,6 +252,16 @@ public class SpecConfigReader {
               unprocessedConfig.remove(constantKey);
             });
 
+    // Process eip8198 config
+    streamConfigSetters(Eip8198Builder.class)
+        .forEach(
+            setter -> {
+              final String constantKey = camelToSnakeCase(setter.getName());
+              final Object rawValue = unprocessedConfig.get(constantKey);
+              invokeSetter(setter, configBuilder::eip8198Builder, constantKey, rawValue);
+              unprocessedConfig.remove(constantKey);
+            });
+
     // Check any constants that have been configured and then ignore
     final Set<String> configuredConstants =
         Sets.intersection(CONSTANT_KEYS, unprocessedConfig.keySet());
@@ -324,6 +336,32 @@ public class SpecConfigReader {
       }
     }
     return gasLimitSchedule;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Object slotDurationScheduleFromList(final Object o) {
+    final List<SlotTimingParameters> schedule = new ArrayList<>();
+    final List<?> entries = (List<?>) o;
+    for (Object entry : entries) {
+      if (entry instanceof Map) {
+        final Map<String, Object> data = (Map<String, Object>) entry;
+        schedule.add(
+            new SlotTimingParameters(
+                UInt64.valueOf(data.get("epoch").toString()),
+                Integer.parseInt(data.get("slot_duration_ms").toString()),
+                Integer.parseInt(data.get("proposer_reorg_cutoff_ms").toString()),
+                Integer.parseInt(data.get("attestation_due_ms").toString()),
+                Integer.parseInt(data.get("aggregate_due_ms").toString()),
+                Integer.parseInt(data.get("sync_message_due_ms").toString()),
+                Integer.parseInt(data.get("contribution_due_ms").toString()),
+                Integer.parseInt(data.get("payload_due_ms").toString()),
+                Integer.parseInt(data.get("payload_attestation_due_ms").toString()),
+                Integer.parseInt(data.get("inclusion_list_due_ms").toString())));
+      } else {
+        throw new IllegalArgumentException("Could not parse entry slot duration schedule");
+      }
+    }
+    return schedule;
   }
 
   private Stream<Method> streamConfigSetters(final Class<?> builderClass) {

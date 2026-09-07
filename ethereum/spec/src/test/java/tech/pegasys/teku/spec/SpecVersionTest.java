@@ -23,6 +23,7 @@ import tech.pegasys.teku.spec.config.SpecConfigAltair;
 import tech.pegasys.teku.spec.config.SpecConfigBellatrix;
 import tech.pegasys.teku.spec.config.SpecConfigCapella;
 import tech.pegasys.teku.spec.config.SpecConfigDeneb;
+import tech.pegasys.teku.spec.config.SpecConfigEip8198;
 import tech.pegasys.teku.spec.config.SpecConfigElectra;
 import tech.pegasys.teku.spec.config.SpecConfigFulu;
 import tech.pegasys.teku.spec.config.SpecConfigGloas;
@@ -107,6 +108,14 @@ class SpecVersionTest {
                 SpecConfigHeze.required(minimalConfig), SchemaRegistryBuilder.create());
         actualVersion =
             SpecVersion.create(SpecMilestone.HEZE, minimalConfig, SchemaRegistryBuilder.create());
+      }
+      case EIP8198 -> {
+        expectedVersion =
+            SpecVersion.createEip8198(
+                SpecConfigEip8198.required(minimalConfig), SchemaRegistryBuilder.create());
+        actualVersion =
+            SpecVersion.create(
+                SpecMilestone.EIP8198, minimalConfig, SchemaRegistryBuilder.create());
       }
     }
 

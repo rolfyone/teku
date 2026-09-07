@@ -1,0 +1,13 @@
+# EIP-8198 Quick Slots preset for swift
+
+SLOT_DURATION_SCHEDULE:
+  - epoch: 0
+    slot_duration_ms: 2000
+    proposer_reorg_cutoff_ms: 333
+    attestation_due_ms: 500
+    aggregate_due_ms: 1000
+    sync_message_due_ms: 500
+    contribution_due_ms: 1000
+    payload_due_ms: 1000
+    payload_attestation_due_ms: 1500
+    inclusion_list_due_ms: 1333

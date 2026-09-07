@@ -162,6 +162,10 @@ public class SpecConfigPhase0 implements SpecConfig {
   private final Bytes4 hezeForkVersion;
   private final UInt64 hezeForkEpoch;
 
+  // eip8198 fork
+  private final Bytes4 eip8198ForkVersion;
+  private final UInt64 eip8198ForkEpoch;
+
   // ephemery
   private final Optional<UInt64> ephemeryResetPeriod;
 
@@ -253,6 +257,8 @@ public class SpecConfigPhase0 implements SpecConfig {
       final UInt64 gloasForkEpoch,
       final Bytes4 hezeForkVersion,
       final UInt64 hezeForkEpoch,
+      final Bytes4 eip8198ForkVersion,
+      final UInt64 eip8198ForkEpoch,
       final Optional<UInt64> ephemeryResetPeriod) {
     this.rawConfig = rawConfig;
     this.eth1FollowDistance = eth1FollowDistance;
@@ -340,6 +346,8 @@ public class SpecConfigPhase0 implements SpecConfig {
     this.gloasForkEpoch = gloasForkEpoch;
     this.hezeForkVersion = hezeForkVersion;
     this.hezeForkEpoch = hezeForkEpoch;
+    this.eip8198ForkVersion = eip8198ForkVersion;
+    this.eip8198ForkEpoch = eip8198ForkEpoch;
     this.ephemeryResetPeriod = ephemeryResetPeriod;
     this.blsSignatureVerifier = blsSignatureVerifier;
     this.batchSignatureVerifierSupplier = batchSignatureVerifierSupplier;
@@ -548,6 +556,16 @@ public class SpecConfigPhase0 implements SpecConfig {
   @Override
   public UInt64 getHezeForkEpoch() {
     return hezeForkEpoch;
+  }
+
+  @Override
+  public Bytes4 getEip8198ForkVersion() {
+    return eip8198ForkVersion;
+  }
+
+  @Override
+  public UInt64 getEip8198ForkEpoch() {
+    return eip8198ForkEpoch;
   }
 
   @Override
@@ -892,6 +910,8 @@ public class SpecConfigPhase0 implements SpecConfig {
         && Objects.equals(gloasForkEpoch, that.gloasForkEpoch)
         && Objects.equals(hezeForkVersion, that.hezeForkVersion)
         && Objects.equals(hezeForkEpoch, that.hezeForkEpoch)
+        && Objects.equals(eip8198ForkVersion, that.eip8198ForkVersion)
+        && Objects.equals(eip8198ForkEpoch, that.eip8198ForkEpoch)
         && Objects.equals(genesisDelay, that.genesisDelay)
         && Objects.equals(minEpochsToInactivityPenalty, that.minEpochsToInactivityPenalty)
         && Objects.equals(shardCommitteePeriod, that.shardCommitteePeriod)
@@ -981,6 +1001,8 @@ public class SpecConfigPhase0 implements SpecConfig {
         gloasForkEpoch,
         hezeForkVersion,
         hezeForkEpoch,
+        eip8198ForkVersion,
+        eip8198ForkEpoch,
         attestationSubnetPrefixBits,
         ephemeryResetPeriod);
   }

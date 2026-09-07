@@ -236,6 +236,16 @@ public class DelegatingSpecConfig implements SpecConfig {
   }
 
   @Override
+  public Bytes4 getEip8198ForkVersion() {
+    return specConfig.getEip8198ForkVersion();
+  }
+
+  @Override
+  public UInt64 getEip8198ForkEpoch() {
+    return specConfig.getEip8198ForkEpoch();
+  }
+
+  @Override
   public int getSecondsPerSlot() {
     return specConfig.getSecondsPerSlot();
   }

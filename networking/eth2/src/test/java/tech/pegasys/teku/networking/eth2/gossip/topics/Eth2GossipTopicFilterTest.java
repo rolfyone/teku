@@ -93,6 +93,7 @@ class Eth2GossipTopicFilterTest {
           case HEZE ->
               TestSpecFactory.createMinimalHeze(
                   b -> b.fuluBuilder(fuluBuilder).hezeForkEpoch(nextMilestoneForkEpoch));
+          case EIP8198 -> throw new IllegalArgumentException("EIP8198 is an unsupported milestone");
         };
     p2pConfig = P2PConfig.builder().specProvider(spec).build();
     final StorageSystem storageSystem = InMemoryStorageSystemBuilder.buildDefault(spec);

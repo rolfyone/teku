@@ -79,6 +79,7 @@ class ProposersDataManagerTest {
               case FULU -> TestSpecFactory.createMinimalWithFuluForkEpoch(currentForkEpoch);
               case GLOAS -> TestSpecFactory.createMinimalWithGloasForkEpoch(currentForkEpoch);
               case HEZE -> TestSpecFactory.createMinimalWithHezeForkEpoch(currentForkEpoch);
+              case EIP8198 -> TestSpecFactory.createMinimalWithEip8198ForkEpoch(currentForkEpoch);
             });
     dataStructureUtil = specContext.getDataStructureUtil();
     eventThread = new InlineEventThread();

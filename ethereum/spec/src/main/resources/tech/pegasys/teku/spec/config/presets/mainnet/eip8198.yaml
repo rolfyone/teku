@@ -1,0 +1,13 @@
+# EIP-8198 Quick Slots preset for mainnet
+
+SLOT_DURATION_SCHEDULE:
+  - epoch: 0
+    slot_duration_ms: 12000
+    proposer_reorg_cutoff_ms: 2000
+    attestation_due_ms: 3000
+    aggregate_due_ms: 6000
+    sync_message_due_ms: 3000
+    contribution_due_ms: 6000
+    payload_due_ms: 6000
+    payload_attestation_due_ms: 9000
+    inclusion_list_due_ms: 8000
