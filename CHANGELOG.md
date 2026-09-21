@@ -11,6 +11,7 @@
  - Removed the `--deposit-snapshot-enabled` and `--Xdeposit-snapshot` CLI options along with the bundled deposit tree snapshots.
 
 ### Additions and Improvements
+ - Scheduled the Glamsterdam (Gloas) upgrade on Sepolia for epoch `353024` (October 6, 2026 13:53:36 UTC).
  - Enabled aircompressor-v3 by default for gossip and RPC snappy encoding/decoding. The experimental flags `--Xp2p-gossip-snappy-aircompressor-enabled` and `--Xp2p-rpc-snappy-aircompressor-enabled` can be used to revert to snappy-java if needed.
  - Increased the default value of `--p2p-target-subnet-subscriber-count` from 2 to 3.
  - Added native support for the [Plataberget testnet](https://plataberget.dev/). Use `--network=plataberget` to join the network.
