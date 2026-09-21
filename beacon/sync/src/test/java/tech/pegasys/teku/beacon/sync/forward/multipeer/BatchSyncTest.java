@@ -578,6 +578,37 @@ class BatchSyncTest {
   }
 
   @Test
+  void shouldContestFirstBatchThatDoesNotFullyCoverItsRangeWhenChainBreaks() {
+    // Regression (cursor bugbot): a batch is marked complete as soon as a follow-up request
+    // comes back empty, even if its last received block falls short of getLastSlot(). Such a
+    // batch may still be hiding the linking block in the unclaimed remainder of its range, so
+    // it must not be exonerated just because it is non-empty.
+    assertThat(sync.syncToChain(targetChain)).isNotDone();
+
+    final Batch batch0 = batches.get(0);
+    final Batch batch1 = batches.get(1);
+    final Batch batch2 = batches.get(2);
+
+    final SignedBeaconBlock batch0Block =
+        chainBuilder.generateBlockAtSlot(batch0.getLastSlot()).getBlock();
+    // batch1 only reports a block partway through its range, well short of its lastSlot.
+    final SignedBeaconBlock batch1PartialBlock =
+        chainBuilder.generateBlockAtSlot(batch1.getFirstSlot()).getBlock();
+    // batch2's block has an unrelated parent - the real link is hidden later in batch1's range.
+    final SignedBeaconBlock batch2MaliciousBlock =
+        dataStructureUtil.randomSignedBeaconBlock(batch2.getFirstSlot().plus(1));
+
+    batches.receiveBlocks(batch0, batch0Block);
+    batches.receiveBlocks(batch1, batch1PartialBlock);
+    // Empty follow-up falsely marks batch1 complete despite not reaching its lastSlot.
+    batches.receiveBlocks(batch1);
+    batches.receiveBlocks(batch2, batch2MaliciousBlock);
+
+    // batch1 did not verifiably cover its whole range, so it cannot be exonerated.
+    batches.assertMarkedContested(batch1);
+  }
+
+  @Test
   void shouldNotContestFirstBatchWhenSecondBatchDoesNotChainFromItWithIntermediateBatches() {
     // Regression: when intermediate empty batches sit between two non-empty batches and
     // the second does not chain from the first, only the intermediate batches and the
