@@ -22,6 +22,7 @@ import static tech.pegasys.teku.kzg.KZG.CELLS_PER_EXT_BLOB;
 import static tech.pegasys.teku.spec.constants.NetworkConstants.SYNC_COMMITTEE_SUBNET_COUNT;
 import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_CONFIG_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_ENTRY_SCHEMA;
+import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_PREFERENCES_ENTRY_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_PREFERENCES_REQUEST_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_PREFERENCES_SCHEMA;
 import static tech.pegasys.teku.spec.schemas.ApiSchemas.BUILDER_REQUEST_AUTH_SCHEMA;
@@ -147,6 +148,7 @@ import tech.pegasys.teku.spec.datastructures.builder.ValidatorRegistration;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderConfig;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderEntry;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderPreferences;
+import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderPreferencesEntry;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderPreferencesRequest;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderRequestAuth;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.SignedBuilderRequestAuth;
@@ -354,6 +356,10 @@ public final class DataStructureUtil {
 
   public UInt256 randomUInt256() {
     return UInt256.fromBytes(randomBytes(32));
+  }
+
+  public UInt256 randomUInt256(final long bound) {
+    return UInt256.valueOf(randomPositiveLong(bound));
   }
 
   public Eth1Address randomEth1Address() {
@@ -1311,25 +1317,24 @@ public final class DataStructureUtil {
   }
 
   public BlockContainerAndMetaData randomBlockContainerAndMetaData(final UInt64 slotNum) {
-    return new BlockContainerAndMetaData(
-        randomBeaconBlock(slotNum),
-        spec.atSlot(slotNum).getMilestone(),
-        randomUInt256(),
-        randomUInt256());
+    final BeaconBlock block = randomBeaconBlock(slotNum);
+    return randomBlockContainerAndMetaData(block, slotNum);
   }
 
   public BlockContainerAndMetaData randomBlindedBlockContainerAndMetaData(final UInt64 slotNum) {
-    return new BlockContainerAndMetaData(
-        randomBlindedBeaconBlock(slotNum),
-        spec.atSlot(slotNum).getMilestone(),
-        randomUInt256(),
-        randomUInt256());
+    final BeaconBlock blindedBlock = randomBlindedBeaconBlock(slotNum);
+    return randomBlockContainerAndMetaData(blindedBlock, slotNum);
   }
 
   public BlockContainerAndMetaData randomBlockContainerAndMetaData(
       final BlockContainer blockContainer, final UInt64 slotNum) {
-    return new BlockContainerAndMetaData(
-        blockContainer, spec.atSlot(slotNum).getMilestone(), randomUInt256(), randomUInt256());
+    final SpecMilestone milestone = spec.atSlot(slotNum).getMilestone();
+    return BlockContainerAndMetaData.builder()
+        .blockContainer(blockContainer)
+        .milestone(milestone)
+        .executionPayloadValue(randomUInt256())
+        .consensusBlockValue(randomUInt256())
+        .build();
   }
 
   public BeaconBlock randomBlindedBeaconBlock(final UInt64 slot) {
@@ -2124,7 +2129,8 @@ public final class DataStructureUtil {
 
   public BuilderRequestAuth randomBuilderRequestAuth() {
     return BUILDER_REQUEST_AUTH_SCHEMA.create(
-        randomBytes(randomPositiveInt((int) SpecConfigGloas.MAX_DATA_SIZE)), randomSlot());
+        randomBytes(randomPositiveInt((int) SpecConfigGloas.MAX_BUILDER_AUTH_DATA_SIZE)),
+        randomSlot());
   }
 
   public SignedBuilderRequestAuth randomSignedBuilderRequestAuth() {
@@ -2149,12 +2155,24 @@ public final class DataStructureUtil {
 
   public BuilderEntry randomBuilderEntry() {
     return BUILDER_ENTRY_SCHEMA.create(
-        Bytes.of(("https://" + randomString(6) + ".com").getBytes(StandardCharsets.UTF_8)),
+        Bytes.of(randomUrl().getBytes(StandardCharsets.UTF_8)),
         randomSignedBuilderRequestAuth(),
         List.of(),
         randomUInt64(),
         randomUInt64(),
         randomUInt64(100));
+  }
+
+  public BuilderPreferencesEntry randomBuilderPreferencesEntry() {
+    return BUILDER_PREFERENCES_ENTRY_SCHEMA.create(
+        randomPublicKey(),
+        Bytes.of(randomUrl().getBytes(StandardCharsets.UTF_8)),
+        randomSignedBuilderRequestAuth(),
+        randomUInt64());
+  }
+
+  private String randomUrl() {
+    return "https://" + randomString(6) + ".com";
   }
 
   public ForkChoiceState randomForkChoiceState(final boolean optimisticHead) {
@@ -3818,7 +3836,7 @@ public final class DataStructureUtil {
     return getConstant(
         specConfig ->
             SpecConfigGloas.required(spec.forMilestone(SpecMilestone.GLOAS).getConfig())
-                .getPtcSize());
+                .getPayloadTimelinessCommitteeSize());
   }
 
   int getKzgCommitmentsInclusionProofDepth() {
