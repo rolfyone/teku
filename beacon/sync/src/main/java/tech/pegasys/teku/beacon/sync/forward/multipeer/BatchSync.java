@@ -371,13 +371,15 @@ public class BatchSync implements Sync {
     }
 
     // firstBatch can only be exonerated if its last received block reaches the end of its
-    // assigned range. A batch is marked complete as soon as a follow-up request comes back
-    // empty, which can happen before its last block reaches getLastSlot(); in that case it may
-    // still be hiding the linking block in the unclaimed remainder of its range, so it must stay
-    // contested. Only a batch that is verified to fully cover its range can be excluded from the
-    // contested set to avoid penalising its peer.
+    // assigned range and its first block is already confirmed as connecting back to our trusted
+    // chain. A batch is marked complete as soon as a follow-up request comes back empty, which
+    // can happen before its last block reaches getLastSlot(); in that case it may still be hiding
+    // the linking block in the unclaimed remainder of its range. Likewise, without a confirmed
+    // first block, firstBatch's own blocks could belong to a fork that never actually connects to
+    // our chain, in which case excluding it from the contested set would mean it is never
+    // retried. Only a batch verified on both ends can be excluded to avoid penalising its peer.
     final NavigableSet<Batch> contestedBatches =
-        batchFullyCoversItsRange(firstBatch)
+        batchFullyCoversItsRange(firstBatch) && firstBatch.isFirstBlockConfirmed()
             ? activeBatches.batchesBetweenExclusiveStart(firstBatch, secondBatch)
             : activeBatches.batchesBetweenInclusive(firstBatch, secondBatch);
     LOG.debug(

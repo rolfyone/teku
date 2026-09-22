@@ -609,6 +609,36 @@ class BatchSyncTest {
   }
 
   @Test
+  void shouldContestFirstBatchThatFullyCoversItsRangeButIsNotOnAConfirmedFork() {
+    // Regression (cursor bugbot): reaching getLastSlot() only proves firstBatch's peer served a
+    // self-consistent sequence of blocks up to the end of its range - it doesn't prove those
+    // blocks are actually on our chain. Without firstBatch's first block already being confirmed
+    // as connecting back to a trusted point, it must not be exonerated just because its range is
+    // fully covered - otherwise a batch on a fabricated fork would never be retried.
+    assertThat(sync.syncToChain(targetChain)).isNotDone();
+
+    final Batch batch1 = batches.get(1);
+    final Batch batch2 = batches.get(2);
+
+    // batch1's single block reaches its lastSlot exactly, but has a parent that doesn't exist
+    // anywhere in our chain - its peer could be serving a fork that never actually connects.
+    final SignedBeaconBlock batch1UnconfirmedBlock =
+        dataStructureUtil.randomSignedBeaconBlock(batch1.getLastSlot());
+    // batch2's block has an unrelated parent, so it does not chain from batch1's last block.
+    final SignedBeaconBlock batch2MaliciousBlock =
+        dataStructureUtil.randomSignedBeaconBlock(batch2.getFirstSlot().plus(1));
+
+    // batch0 remains empty so batch1's first block is never confirmed against a previous batch.
+    batches.receiveBlocks(batch1, batch1UnconfirmedBlock);
+    batches.receiveBlocks(batch2, batch2MaliciousBlock);
+
+    assertThatBatch(batch1).hasUnconfirmedFirstBlock();
+    // batch1's fork is unconfirmed even though it fully covers its range, so it cannot be
+    // exonerated - it must remain contested and be retried from a different peer.
+    batches.assertMarkedContested(batch1);
+  }
+
+  @Test
   void shouldNotContestFirstBatchWhenSecondBatchDoesNotChainFromItWithIntermediateBatches() {
     // Regression: when intermediate empty batches sit between two non-empty batches and
     // the second does not chain from the first, only the intermediate batches and the
