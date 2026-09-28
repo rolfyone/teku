@@ -15,7 +15,6 @@ package tech.pegasys.teku.spec.datastructures.epbs.versions.gloas;
 
 import static tech.pegasys.teku.spec.schemas.registry.SchemaTypes.EXECUTION_PAYLOAD_BID_SCHEMA;
 
-import java.util.OptionalLong;
 import tech.pegasys.teku.bls.BLSSignature;
 import tech.pegasys.teku.infrastructure.ssz.containers.ContainerSchema2;
 import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode;
@@ -26,32 +25,16 @@ import tech.pegasys.teku.spec.schemas.registry.SchemaRegistry;
 public class SignedExecutionPayloadBidSchema
     extends ContainerSchema2<SignedExecutionPayloadBid, ExecutionPayloadBid, SszSignature> {
 
-  private final OptionalLong networkSszLengthBytesUpperBound;
-
   public SignedExecutionPayloadBidSchema(final SchemaRegistry schemaRegistry) {
-    this(schemaRegistry, OptionalLong.empty());
+    this("SignedExecutionPayloadBid", schemaRegistry);
   }
 
   public SignedExecutionPayloadBidSchema(
-      final SchemaRegistry schemaRegistry, final OptionalLong networkSszLengthBytesUpperBound) {
-    this("SignedExecutionPayloadBid", schemaRegistry, networkSszLengthBytesUpperBound);
-  }
-
-  public SignedExecutionPayloadBidSchema(
-      final String schemaName,
-      final SchemaRegistry schemaRegistry,
-      final OptionalLong networkSszLengthBytesUpperBound) {
+      final String schemaName, final SchemaRegistry schemaRegistry) {
     super(
         schemaName,
         namedSchema("message", schemaRegistry.get(EXECUTION_PAYLOAD_BID_SCHEMA)),
         namedSchema("signature", SszSignatureSchema.INSTANCE));
-    this.networkSszLengthBytesUpperBound = networkSszLengthBytesUpperBound;
-    validateNetworkSszLengthBytesUpperBound();
-  }
-
-  @Override
-  public OptionalLong getNetworkSszLengthBytesUpperBound() {
-    return networkSszLengthBytesUpperBound;
   }
 
   public SignedExecutionPayloadBid create(

@@ -408,7 +408,10 @@ public class SchemaRegistryBuilder {
             ELECTRA,
             (_, specConfig, _) ->
                 SszBitlistSchema.create(specConfig.getMaxValidatorsPerAttestation()))
-        .withCreator(GLOAS, (_, _, _) -> new SszProgressiveBitlistSchema())
+        .withCreator(
+            GLOAS,
+            (_, specConfig, _) ->
+                new SszProgressiveBitlistSchema(specConfig.getMaxValidatorsPerAttestation()))
         .build();
   }
 
@@ -422,7 +425,10 @@ public class SchemaRegistryBuilder {
             ELECTRA,
             (_, specConfig, _) ->
                 SszUInt64ListSchema.create(specConfig.getMaxValidatorsPerAttestation()))
-        .withCreator(GLOAS, (_, _, _) -> SszProgressiveUInt64ListSchema.create())
+        .withCreator(
+            GLOAS,
+            (_, specConfig, _) ->
+                SszProgressiveUInt64ListSchema.create(specConfig.getMaxValidatorsPerAttestation()))
         .build();
   }
 
@@ -431,7 +437,10 @@ public class SchemaRegistryBuilder {
         .withCreator(
             BELLATRIX,
             (_, specConfig, _) -> new TransactionSchema(SpecConfigBellatrix.required(specConfig)))
-        .withCreator(GLOAS, (_, _, _) -> new ProgressiveTransactionSchema())
+        .withCreator(
+            GLOAS,
+            (_, specConfig, _) ->
+                new ProgressiveTransactionSchema(SpecConfigBellatrix.required(specConfig)))
         .build();
   }
 
@@ -446,9 +455,11 @@ public class SchemaRegistryBuilder {
                     SszSchemaHints.sszPackedByteLists()))
         .withCreator(
             GLOAS,
-            (registry, _, _) ->
+            (registry, specConfig, _) ->
                 SszProgressiveListSchema.create(
-                    registry.get(TRANSACTION_SCHEMA), SszSchemaHints.sszPackedByteLists()))
+                    registry.get(TRANSACTION_SCHEMA),
+                    SszSchemaHints.sszPackedByteLists(),
+                    SpecConfigBellatrix.required(specConfig).getMaxTransactionsPerPayload()))
         .build();
   }
 
@@ -468,6 +479,8 @@ public class SchemaRegistryBuilder {
                     SpecConfigElectra.required(specConfig).getMaxDepositRequestsPerPayload()))
         .withCreator(
             GLOAS,
+            // no limit in Gloas (`DepositRequests.LIMIT = None`): deposit requests are not covered
+            // by `verify_execution_requests_limits` and are only bounded by MAX_PAYLOAD_SIZE
             (registry, _, _) ->
                 SszProgressiveListSchema.create(registry.get(DEPOSIT_REQUEST_SCHEMA)))
         .build();
@@ -489,8 +502,10 @@ public class SchemaRegistryBuilder {
                     SpecConfigElectra.required(specConfig).getMaxWithdrawalRequestsPerPayload()))
         .withCreator(
             GLOAS,
-            (registry, _, _) ->
-                SszProgressiveListSchema.create(registry.get(WITHDRAWAL_REQUEST_SCHEMA)))
+            (registry, specConfig, _) ->
+                SszProgressiveListSchema.create(
+                    registry.get(WITHDRAWAL_REQUEST_SCHEMA),
+                    SpecConfigElectra.required(specConfig).getMaxWithdrawalRequestsPerPayload()))
         .build();
   }
 
@@ -510,8 +525,10 @@ public class SchemaRegistryBuilder {
                     SpecConfigElectra.required(specConfig).getMaxConsolidationRequestsPerPayload()))
         .withCreator(
             GLOAS,
-            (registry, _, _) ->
-                SszProgressiveListSchema.create(registry.get(CONSOLIDATION_REQUEST_SCHEMA)))
+            (registry, specConfig, _) ->
+                SszProgressiveListSchema.create(
+                    registry.get(CONSOLIDATION_REQUEST_SCHEMA),
+                    SpecConfigElectra.required(specConfig).getMaxConsolidationRequestsPerPayload()))
         .build();
   }
 
@@ -701,13 +718,6 @@ public class SchemaRegistryBuilder {
             PHASE0,
             (registry, specConfig, schemaName) ->
                 new SignedBeaconBlockSchema(registry.get(BEACON_BLOCK_SCHEMA), schemaName))
-        .withCreator(
-            GLOAS,
-            (registry, specConfig, schemaName) ->
-                new SignedBeaconBlockSchema(
-                    registry.get(BEACON_BLOCK_SCHEMA),
-                    schemaName,
-                    OptionalLong.of(specConfig.getMaxPayloadSize())))
         .build();
   }
 
@@ -732,8 +742,10 @@ public class SchemaRegistryBuilder {
     return providerBuilder(BUILDER_DEPOSIT_REQUESTS_SCHEMA)
         .withCreator(
             GLOAS,
-            (registry, _, _) ->
-                SszProgressiveListSchema.create(registry.get(BUILDER_DEPOSIT_REQUEST_SCHEMA)))
+            (registry, specConfig, _) ->
+                SszProgressiveListSchema.create(
+                    registry.get(BUILDER_DEPOSIT_REQUEST_SCHEMA),
+                    SpecConfigGloas.required(specConfig).getMaxBuilderDepositRequestsPerPayload()))
         .build();
   }
 
@@ -747,8 +759,10 @@ public class SchemaRegistryBuilder {
     return providerBuilder(BUILDER_EXIT_REQUESTS_SCHEMA)
         .withCreator(
             GLOAS,
-            (registry, _, _) ->
-                SszProgressiveListSchema.create(registry.get(BUILDER_EXIT_REQUEST_SCHEMA)))
+            (registry, specConfig, _) ->
+                SszProgressiveListSchema.create(
+                    registry.get(BUILDER_EXIT_REQUEST_SCHEMA),
+                    SpecConfigGloas.required(specConfig).getMaxBuilderExitRequestsPerPayload()))
         .build();
   }
 
@@ -889,7 +903,9 @@ public class SchemaRegistryBuilder {
             (registry, specConfig, schemaName) ->
                 new BlobKzgCommitmentsSchemaDeneb(SpecConfigDeneb.required(specConfig)))
         .withCreator(
-            GLOAS, (registry, specConfig, schemaName) -> new BlobKzgCommitmentsSchemaGloas())
+            GLOAS,
+            (registry, specConfig, schemaName) ->
+                new BlobKzgCommitmentsSchemaGloas(SpecConfigDeneb.required(specConfig)))
         .build();
   }
 
@@ -1011,14 +1027,6 @@ public class SchemaRegistryBuilder {
         .withCreator(
             ELECTRA,
             (registry, specConfig, schemaName) -> new AttesterSlashingSchema(schemaName, registry))
-        .withCreator(
-            GLOAS,
-            (registry, specConfig, schemaName) ->
-                new AttesterSlashingSchema(
-                    schemaName,
-                    registry,
-                    OptionalLong.of(
-                        SpecConfigGloas.required(specConfig).getMaxAttesterSlashingSize())))
         .build();
   }
 
@@ -1157,14 +1165,6 @@ public class SchemaRegistryBuilder {
             ELECTRA,
             (registry, specConfig, schemaName) ->
                 new SignedAggregateAndProofSchema(schemaName, registry))
-        .withCreator(
-            GLOAS,
-            (registry, specConfig, schemaName) ->
-                new SignedAggregateAndProofSchema(
-                    schemaName,
-                    registry,
-                    OptionalLong.of(
-                        SpecConfigGloas.required(specConfig).getMaxSignedAggregateAndProofSize())))
         .build();
   }
 
@@ -1184,7 +1184,9 @@ public class SchemaRegistryBuilder {
             (registry, specConfig, schemaName) ->
                 new DataColumnSchemaFulu(SpecConfigDeneb.required(specConfig), registry))
         .withCreator(
-            GLOAS, (registry, specConfig, schemaName) -> new DataColumnSchemaGloas(registry))
+            GLOAS,
+            (registry, specConfig, schemaName) ->
+                new DataColumnSchemaGloas(SpecConfigDeneb.required(specConfig), registry))
         .build();
   }
 
@@ -1349,21 +1351,11 @@ public class SchemaRegistryBuilder {
     return providerBuilder(SIGNED_EXECUTION_PAYLOAD_BID_SCHEMA)
         .withCreator(
             GLOAS,
-            (registry, specConfig, schemaName) ->
-                new SignedExecutionPayloadBidSchema(
-                    registry,
-                    OptionalLong.of(
-                        SpecConfigGloas.required(specConfig)
-                            .getMaxSignedExecutionPayloadBidSize())))
+            (registry, specConfig, schemaName) -> new SignedExecutionPayloadBidSchema(registry))
         .withCreator(
             HEZE,
             (registry, specConfig, schemaName) ->
-                new SignedExecutionPayloadBidSchema(
-                    "SignedExecutionPayloadBidHeze",
-                    registry,
-                    OptionalLong.of(
-                        SpecConfigGloas.required(specConfig)
-                            .getMaxSignedExecutionPayloadBidSize())))
+                new SignedExecutionPayloadBidSchema("SignedExecutionPayloadBidHeze", registry))
         .build();
   }
 

@@ -88,7 +88,6 @@ import tech.pegasys.teku.spec.datastructures.builder.SignedValidatorRegistration
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderConfig;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderPreferencesEntry;
 import tech.pegasys.teku.spec.datastructures.builder.versions.gloas.BuilderPreferencesRequest;
-import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadBid;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.ExecutionPayloadEnvelope;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationData;
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.PayloadAttestationMessage;
@@ -533,8 +532,11 @@ public class ValidatorApiHandler implements ValidatorApiChannel, SlotEventsChann
                     slot, randaoReveal, graffiti, includePayload, builderConfig))
         .whenException(
             __ -> {
-              // allow further block production attempts for this slot
+              // allow further block production attempts for this slot, including a new preparation
+              // (e.g. when the first attempt was made too early and so was not prepared for the
+              // slot)
               blockProductionBySlotCache.remove(slot);
+              blockProductionPreparationContextBySlotCache.remove(slot);
             });
   }
 
@@ -1158,12 +1160,6 @@ public class ValidatorApiHandler implements ValidatorApiChannel, SlotEventsChann
   @Override
   public SafeFuture<Optional<List<SyncCommitteeSelectionProof>>> getSyncCommitteeSelectionProof(
       final List<SyncCommitteeSelectionProof> requests) {
-    throw new UnsupportedOperationException("This method is not implemented by the Beacon Node");
-  }
-
-  @Override
-  public SafeFuture<Optional<ExecutionPayloadBid>> createUnsignedExecutionPayloadBid(
-      final UInt64 slot, final UInt64 builderIndex) {
     throw new UnsupportedOperationException("This method is not implemented by the Beacon Node");
   }
 
