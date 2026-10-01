@@ -385,7 +385,6 @@ public class BeaconChainController extends Service implements BeaconChainControl
   protected volatile AggregatingAttestationPool aggregatingAttestationPool;
   protected volatile InclusionListManager inclusionListManager;
   protected volatile InclusionListStore inclusionListStore;
-  protected volatile SignedInclusionListValidator signedInclusionListValidator;
   protected volatile DepositProvider depositProvider;
   protected volatile SyncService syncService;
   protected volatile AttestationManager attestationManager;
@@ -772,6 +771,8 @@ public class BeaconChainController extends Service implements BeaconChainControl
     initZkChain();
     initForkChoiceStateProvider();
     initProposerPreferencesManager();
+    inclusionListStore =
+        new InclusionListStore(beaconConfig.storeConfig().getInclusionListCacheSize());
     initForkChoiceNotifier();
     initMergeMonitors();
     initSignatureVerificationService();
@@ -1741,8 +1742,6 @@ public class BeaconChainController extends Service implements BeaconChainControl
 
   protected void initForkChoice() {
     LOG.debug("BeaconChainController.initForkChoice()");
-    final StoreConfig storeConfig = beaconConfig.storeConfig();
-    inclusionListStore = new InclusionListStore(storeConfig.getInclusionListCacheSize());
     forkChoice =
         new ForkChoice(
             spec,
@@ -2356,7 +2355,9 @@ public class BeaconChainController extends Service implements BeaconChainControl
     LOG.debug("BeaconChainController.initInclusionListPool()");
     final SignedInclusionListValidator signedInclusionListValidator =
         new SignedInclusionListValidator(spec, recentChainData, signatureVerificationService);
-    inclusionListManager = new InclusionListManager(signedInclusionListValidator, forkChoice);
+    inclusionListManager =
+        new InclusionListManager(
+            signedInclusionListValidator, forkChoice, spec, recentChainData, inclusionListStore);
     eventChannels.subscribe(SlotEventsChannel.class, inclusionListManager);
   }
 
@@ -2364,11 +2365,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
     LOG.debug("BeaconChainController.initInclusionListPayloadAttributesUpdater()");
     inclusionListPayloadAttributesUpdater =
         new InclusionListPayloadAttributesUpdater(
-            forkChoiceNotifier,
-            proposersDataManager,
-            inclusionListStore,
-            combinedChainDataClient,
-            spec);
+            forkChoiceNotifier, proposersDataManager, combinedChainDataClient, spec);
   }
 
   public void initRestAPI() {
@@ -2574,7 +2571,8 @@ public class BeaconChainController extends Service implements BeaconChainControl
             recentChainData,
             getProposerDefaultFeeRecipient(),
             beaconConfig.eth2NetworkConfig().isForkChoiceUpdatedAlwaysSendPayloadAttributes(),
-            proposerPreferencesManager);
+            proposerPreferencesManager,
+            inclusionListStore);
     eventChannels.subscribe(SlotEventsChannel.class, proposersDataManager);
     forkChoiceNotifier =
         new ForkChoiceNotifierImpl(
