@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -74,16 +75,17 @@ import tech.pegasys.teku.statetransition.util.PendingPool;
 import tech.pegasys.teku.statetransition.util.PoolFactory;
 import tech.pegasys.teku.statetransition.validation.ExecutionPayloadBidGossipValidator;
 import tech.pegasys.teku.statetransition.validation.InternalValidationResult;
-import tech.pegasys.teku.storage.client.RecentChainData;
 import tech.pegasys.teku.storage.storageSystem.InMemoryStorageSystemBuilder;
 
 @TestSpecContext(milestone = {SpecMilestone.GLOAS, SpecMilestone.HEZE})
 public class DefaultExecutionPayloadBidManagerTest {
+  @SuppressWarnings("unchecked")
+  private final Supplier<Optional<ReadOnlyForkChoiceStrategy>> forkChoiceStrategySupplier =
+      mock(Supplier.class);
 
   private Spec spec;
   private DataStructureUtil dataStructureUtil;
   private final InclusionListStore inclusionListStore = new InclusionListStore(16);
-  private final RecentChainData recentChainData = mock(RecentChainData.class);
   private final ReadOnlyForkChoiceStrategy forkChoiceStrategy =
       mock(ReadOnlyForkChoiceStrategy.class);
   private final Bytes32 dependentRoot = Bytes32.fromHexStringLenient("0x1234");
@@ -101,7 +103,7 @@ public class DefaultExecutionPayloadBidManagerTest {
   private final ReceivedExecutionPayloadBidEventsChannel
       receivedExecutionPayloadBidEventsChannelPublisher =
           mock(ReceivedExecutionPayloadBidEventsChannel.class);
-  private PendingPool<SignedExecutionPayloadBid> pendingExecutionPayloadBids;
+  private PendingPool<PendingExecutionPayloadBid> pendingExecutionPayloadBids;
 
   @SuppressWarnings("unchecked")
   private final OperationAddedSubscriber<SignedExecutionPayloadBid> operationAddedSubscriber =
@@ -125,8 +127,8 @@ public class DefaultExecutionPayloadBidManagerTest {
             builderBidFetcher,
             bidSelector,
             inclusionListStore,
-            recentChainData);
-    when(recentChainData.getForkChoiceStrategy()).thenReturn(Optional.of(forkChoiceStrategy));
+            forkChoiceStrategySupplier);
+    when(forkChoiceStrategySupplier.get()).thenReturn(Optional.of(forkChoiceStrategy));
     when(forkChoiceStrategy.getAncestor(any(), any())).thenReturn(Optional.of(dependentRoot));
     when(executionPayloadBidCircuitBreaker.isEngaged(any(), any())).thenReturn(false);
     when(builderBidFetcher.getBuilderBids(any(), any(), any(), any(), any(), any()))
@@ -156,7 +158,7 @@ public class DefaultExecutionPayloadBidManagerTest {
             builderBidFetcher,
             new ExecutionPayloadBidSelector(false, executionPayloadBidCircuitBreaker),
             inclusionListStore,
-            recentChainData);
+            forkChoiceStrategySupplier);
     final SafeFuture<BidForBlock> result =
         manager.getBidForBlock(
             parentRoot,
@@ -377,7 +379,7 @@ public class DefaultExecutionPayloadBidManagerTest {
             builderBidFetcher,
             new ExecutionPayloadBidSelector(false, executionPayloadBidCircuitBreaker),
             inclusionListStore,
-            storage.recentChainData());
+            storage.recentChainData()::getForkChoiceStrategy);
     final Bytes32 parentHash = dataStructureUtil.randomBytes32();
 
     final BidForBlock result =
@@ -405,7 +407,7 @@ public class DefaultExecutionPayloadBidManagerTest {
         builderBidFetcher,
         new ExecutionPayloadBidSelector(false, executionPayloadBidCircuitBreaker),
         inclusionListStore,
-        recentChainData);
+        forkChoiceStrategySupplier);
   }
 
   @TestTemplate
@@ -492,6 +494,50 @@ public class DefaultExecutionPayloadBidManagerTest {
                 bid.getExecutionRequestsRoot(),
                 bits.ofBits(IntStream.range(0, bits.getLength()).toArray())),
             signedBid.getSignature());
+  }
+
+  @TestTemplate
+  void resolvesDependentRootOnlyAfterDeferredValidationCompletes() {
+    final SignedExecutionPayloadBid signedExecutionPayloadBid =
+        createBid(UInt64.valueOf(10), dataStructureUtil.randomBytes32(), UInt64.ONE);
+    executionPayloadBidManager.onSlot(signedExecutionPayloadBid.getMessage().getSlot());
+    final SafeFuture<InternalValidationResult> validation = new SafeFuture<>();
+    when(executionPayloadBidGossipValidator.validate(signedExecutionPayloadBid))
+        .thenReturn(validation);
+    final ReadOnlyForkChoiceStrategy forkChoiceStrategy = mock(ReadOnlyForkChoiceStrategy.class);
+    final Bytes32 root = dataStructureUtil.randomBytes32();
+    when(forkChoiceStrategySupplier.get()).thenReturn(Optional.of(forkChoiceStrategy));
+    when(forkChoiceStrategy.getAncestor(
+            signedExecutionPayloadBid.getMessage().getParentBlockRoot(), UInt64.ZERO))
+        .thenReturn(Optional.of(root));
+
+    final SafeFuture<InternalValidationResult> result =
+        executionPayloadBidManager.validateAndAddBid(
+            signedExecutionPayloadBid, RemoteBidOrigin.P2P);
+    verifyNoInteractions(forkChoiceStrategySupplier, forkChoiceStrategy);
+    assertThat(pendingExecutionPayloadBids.size()).isZero();
+    validation.complete(SAVE_FOR_FUTURE);
+
+    assertThat(result).isCompletedWithValue(SAVE_FOR_FUTURE);
+    assertThat(pendingExecutionPayloadBids.get(signedExecutionPayloadBid.hashTreeRoot()))
+        .contains(new PendingExecutionPayloadBid(signedExecutionPayloadBid, Optional.of(root)));
+    verify(forkChoiceStrategy)
+        .getAncestor(signedExecutionPayloadBid.getMessage().getParentBlockRoot(), UInt64.ZERO);
+  }
+
+  @TestTemplate
+  void doesNotResolveDependentRootForProcessableOrDiscardedBids() {
+    for (final InternalValidationResult result :
+        List.of(
+            ACCEPT, InternalValidationResult.IGNORE, InternalValidationResult.reject("invalid"))) {
+      final SignedExecutionPayloadBid signedBid =
+          createBid(UInt64.valueOf(10), dataStructureUtil.randomBytes32(), UInt64.ONE);
+      when(executionPayloadBidGossipValidator.validate(signedBid))
+          .thenReturn(SafeFuture.completedFuture(result));
+      assertThat(executionPayloadBidManager.validateAndAddBid(signedBid, RemoteBidOrigin.P2P))
+          .isCompletedWithValue(result);
+    }
+    verifyNoInteractions(forkChoiceStrategySupplier);
   }
 
   @TestTemplate
@@ -832,7 +878,11 @@ public class DefaultExecutionPayloadBidManagerTest {
 
     SafeFutureAssert.safeJoin(
         executionPayloadBidManager.validateAndAddBid(signedBid, RemoteBidOrigin.BUILDER));
-    assertThat(pendingExecutionPayloadBids.get(signedBid.hashTreeRoot())).contains(signedBid);
+    assertThat(
+            pendingExecutionPayloadBids
+                .get(signedBid.hashTreeRoot())
+                .map(PendingExecutionPayloadBid::signedBid))
+        .contains(signedBid);
     verify(receivedExecutionPayloadBidEventsChannelPublisher, never())
         .onExecutionPayloadBidValidated(signedBid);
 
@@ -943,9 +993,23 @@ public class DefaultExecutionPayloadBidManagerTest {
   }
 
   @TestTemplate
-  public void proposerPreferencesRetryBidsForMatchingSlot() {
-    final SignedProposerPreferences preferences =
+  public void proposerPreferencesRetryBidsForMatchingSlotAndDependentRoot() {
+    final SignedProposerPreferences randomPreferences =
         dataStructureUtil.randomSignedProposerPreferences();
+    final SignedProposerPreferences preferences =
+        randomPreferences
+            .getSchema()
+            .create(
+                randomPreferences
+                    .getMessage()
+                    .getSchema()
+                    .create(
+                        dependentRoot,
+                        randomPreferences.getMessage().getProposalSlot(),
+                        randomPreferences.getMessage().getValidatorIndex(),
+                        randomPreferences.getMessage().getFeeRecipient(),
+                        randomPreferences.getMessage().getTargetGasLimit()),
+                randomPreferences.getSignature());
     final UInt64 slot = preferences.getMessage().getProposalSlot();
     final SignedExecutionPayloadBid signedBid =
         createBid(slot, dataStructureUtil.randomBytes32(), UInt64.valueOf(100));

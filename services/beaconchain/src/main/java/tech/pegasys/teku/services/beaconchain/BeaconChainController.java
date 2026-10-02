@@ -287,6 +287,7 @@ import tech.pegasys.teku.storage.api.CombinedStorageChannel;
 import tech.pegasys.teku.storage.api.DataColumnSidecarNetworkRetriever;
 import tech.pegasys.teku.storage.api.Eth1DepositStorageChannel;
 import tech.pegasys.teku.storage.api.FinalizedCheckpointChannel;
+import tech.pegasys.teku.storage.api.LightClientUpdateChannel;
 import tech.pegasys.teku.storage.api.SidecarArchivePrunableChannel;
 import tech.pegasys.teku.storage.api.SidecarUpdateChannel;
 import tech.pegasys.teku.storage.api.StorageQueryChannel;
@@ -727,6 +728,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
             })
         // Init other services
         .thenRun(this::initAll)
+        .thenCompose(__ -> loadLightClientUpdates())
         .thenRun(
             () -> {
               // complete spec initialization
@@ -1064,7 +1066,7 @@ public class BeaconChainController extends Service implements BeaconChainControl
               builderBidFetcher,
               executionPayloadBidSelector,
               inclusionListStore,
-              recentChainData);
+              recentChainData::getForkChoiceStrategy);
       proposerPreferencesManager.subscribeOperationAdded(defaultExecutionPayloadBidManager);
       eventChannels.subscribe(SlotEventsChannel.class, defaultExecutionPayloadBidManager);
       eventChannels.subscribe(ReceivedBlockEventsChannel.class, defaultExecutionPayloadBidManager);
@@ -1714,7 +1716,27 @@ public class BeaconChainController extends Service implements BeaconChainControl
 
   protected void initLightClientUpdateStore() {
     LOG.debug("BeaconChainController.initLightClientUpdateStore()");
-    lightClientUpdateStore = new LightClientUpdateStore(spec);
+    lightClientUpdateStore =
+        new LightClientUpdateStore(
+            spec, eventChannels.getPublisher(LightClientUpdateChannel.class, beaconAsyncRunner));
+  }
+
+  protected SafeFuture<Void> loadLightClientUpdates() {
+    if (!beaconConfig.eth2NetworkConfig().isLightClientServerEnabled()) {
+      return SafeFuture.COMPLETE;
+    }
+    return combinedChainDataClient
+        .getBestLightClientUpdates()
+        .thenAccept(
+            updates -> {
+              lightClientServerService.loadUpdates(updates);
+              LOG.debug("Loaded {} light client updates from storage", updates.size());
+            })
+        .exceptionally(
+            error -> {
+              LOG.warn("Failed to load light client updates from storage", error);
+              return null;
+            });
   }
 
   protected void initLightClientServerService() {
