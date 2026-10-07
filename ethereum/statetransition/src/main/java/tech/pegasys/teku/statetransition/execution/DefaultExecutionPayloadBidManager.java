@@ -76,12 +76,14 @@ public class DefaultExecutionPayloadBidManager
   private final ReceivedExecutionPayloadBidEventsChannel
       receivedExecutionPayloadBidEventsChannelPublisher;
   private final PendingPool<PendingExecutionPayloadBid> pendingExecutionPayloadBids;
-  private final Supplier<Optional<ReadOnlyForkChoiceStrategy>> forkChoiceStrategySupplier;
-  private final Subscribers<OperationAddedSubscriber<SignedExecutionPayloadBid>> subscribers =
-      Subscribers.create(true);
   private final BuilderBidFetcher builderBidFetcher;
   private final ExecutionPayloadBidSelector bidSelector;
   private final InclusionListStore inclusionListStore;
+  private final Supplier<Optional<ReadOnlyForkChoiceStrategy>> forkChoiceStrategySupplier;
+  private final boolean considerP2PBidsDuringBlockProduction;
+
+  private final Subscribers<OperationAddedSubscriber<SignedExecutionPayloadBid>> subscribers =
+      Subscribers.create(true);
 
   // bids are valid for the current and next slot, so they're indexed by bid.slot for pruning;
   // Sorting bids is only needed during block production, which occurs infrequently. To prevent
@@ -99,8 +101,8 @@ public class DefaultExecutionPayloadBidManager
       final BuilderBidFetcher builderBidFetcher,
       final ExecutionPayloadBidSelector bidSelector,
       final InclusionListStore inclusionListStore,
-      final Supplier<Optional<ReadOnlyForkChoiceStrategy>> forkChoiceStrategySupplier) {
-    this.forkChoiceStrategySupplier = forkChoiceStrategySupplier;
+      final Supplier<Optional<ReadOnlyForkChoiceStrategy>> forkChoiceStrategySupplier,
+      final boolean considerP2PBidsDuringBlockProduction) {
     this.spec = spec;
     this.executionPayloadBidGossipValidator = executionPayloadBidGossipValidator;
     this.executionPayloadBidCircuitBreaker = executionPayloadBidCircuitBreaker;
@@ -110,6 +112,8 @@ public class DefaultExecutionPayloadBidManager
     this.builderBidFetcher = builderBidFetcher;
     this.bidSelector = bidSelector;
     this.inclusionListStore = inclusionListStore;
+    this.forkChoiceStrategySupplier = forkChoiceStrategySupplier;
+    this.considerP2PBidsDuringBlockProduction = considerP2PBidsDuringBlockProduction;
   }
 
   @Override
@@ -170,6 +174,10 @@ public class DefaultExecutionPayloadBidManager
   }
 
   private void addBid(final SignedExecutionPayloadBid signedBid) {
+    // no caching is needed if p2p bids are not needed for block production
+    if (!considerP2PBidsDuringBlockProduction) {
+      return;
+    }
     bidsBySlot
         .computeIfAbsent(signedBid.getMessage().getSlot(), __ -> ConcurrentHashMap.newKeySet())
         .add(signedBid);
@@ -315,9 +323,11 @@ public class DefaultExecutionPayloadBidManager
           if (!circuitBreakerEngaged) {
             try {
               final Set<RemoteBid> p2pBids =
-                  getP2PBidsForSlot(slot).stream()
-                      .filter(bid -> isInclusive(bid, inclusionListBits))
-                      .collect(Collectors.toUnmodifiableSet());
+                  considerP2PBidsDuringBlockProduction
+                      ? getP2PBidsForSlot(slot).stream()
+                          .filter(bid -> isInclusive(bid, inclusionListBits))
+                          .collect(Collectors.toUnmodifiableSet())
+                      : Collections.emptySet();
               final List<RemoteBid> inclusiveBuilderBids =
                   builderBids.stream().filter(bid -> isInclusive(bid, inclusionListBits)).toList();
               maybeRemoteBid =

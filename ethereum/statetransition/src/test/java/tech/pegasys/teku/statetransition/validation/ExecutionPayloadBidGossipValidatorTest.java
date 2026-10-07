@@ -349,7 +349,8 @@ public class ExecutionPayloadBidGossipValidatorTest {
             null,
             null,
             inclusionListStore,
-            () -> Optional.of(forkChoiceStrategy));
+            () -> Optional.of(forkChoiceStrategy),
+            true);
     manager.onSlot(slot);
     when(proposerPreferencesManager.getProposerPreferences(slot, dependentRoot))
         .thenReturn(Optional.empty());
@@ -416,7 +417,8 @@ public class ExecutionPayloadBidGossipValidatorTest {
             null,
             null,
             inclusionListStore,
-            () -> Optional.of(forkChoiceStrategy));
+            () -> Optional.of(forkChoiceStrategy),
+            true);
     manager.onSlot(slot);
     when(gossipValidationHelper.getSlotForBlockRoot(parentBlockRoot)).thenReturn(Optional.empty());
     when(forkChoiceStrategy.getAncestor(eq(parentBlockRoot), any())).thenReturn(Optional.empty());
@@ -492,7 +494,8 @@ public class ExecutionPayloadBidGossipValidatorTest {
             null,
             null,
             inclusionListStore,
-            () -> Optional.of(forkChoiceStrategy));
+            () -> Optional.of(forkChoiceStrategy),
+            true);
     manager.onSlot(slot);
     when(gossipValidationHelper.getParentStateInBlockEpoch(slot.decrement(), parentBlockRoot, slot))
         .thenReturn(SafeFuture.completedFuture(Optional.empty()));
@@ -542,7 +545,8 @@ public class ExecutionPayloadBidGossipValidatorTest {
             null,
             null,
             inclusionListStore,
-            () -> Optional.of(forkChoiceStrategy));
+            () -> Optional.of(forkChoiceStrategy),
+            true);
     manager.onSlot(slot);
     when(proposerPreferencesManager.getProposerPreferences(slot, dependentRoot))
         .thenReturn(Optional.empty());
@@ -586,7 +590,8 @@ public class ExecutionPayloadBidGossipValidatorTest {
             null,
             null,
             inclusionListStore,
-            () -> Optional.of(forkChoiceStrategy));
+            () -> Optional.of(forkChoiceStrategy),
+            true);
     manager.onSlot(slot);
     when(gossipValidationHelper.getGasLimitForExecutionPayload(parentBlockRoot, parentBlockHash))
         .thenReturn(Optional.empty());

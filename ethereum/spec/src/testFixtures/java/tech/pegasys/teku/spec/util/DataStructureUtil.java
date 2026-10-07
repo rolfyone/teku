@@ -2634,7 +2634,8 @@ public final class DataStructureUtil {
   }
 
   public LightClientUpdateWithContext randomLightClientUpdateWithContext(final UInt64 slot) {
-    return new LightClientUpdateWithContext(randomBytes4(), randomLightClientUpdate(slot));
+    return new LightClientUpdateWithContext(
+        randomBytes4(), spec.atSlot(slot).getMilestone(), randomLightClientUpdate(slot));
   }
 
   public Withdrawal randomWithdrawal() {
