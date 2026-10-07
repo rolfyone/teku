@@ -295,6 +295,13 @@ public class GossipValidationHelper {
     return recentChainData.getStore().getLatestFinalized().getState();
   }
 
+  public SafeFuture<Optional<BeaconState>> getHeadState() {
+    return recentChainData
+        .getBestState()
+        .map(headState -> headState.thenApply(Optional::of))
+        .orElseGet(() -> SafeFuture.completedFuture(Optional.empty()));
+  }
+
   /** Returns the fork info for an epoch from the fork schedule, independent of any state. */
   public Optional<ForkInfo> getForkInfo(final UInt64 epoch) {
     return recentChainData.getForkInfo(epoch);

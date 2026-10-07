@@ -14,7 +14,9 @@
 package tech.pegasys.teku.statetransition.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static tech.pegasys.teku.infrastructure.unsigned.UInt64.ONE;
 import static tech.pegasys.teku.networks.Eth2NetworkConfiguration.DEFAULT_FORK_CHOICE_LATE_BLOCK_REORG_ENABLED;
@@ -51,6 +53,7 @@ import tech.pegasys.teku.spec.generator.ChainBuilder.BlockOptions;
 import tech.pegasys.teku.spec.logic.common.util.AsyncBLSSignatureVerifier;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitionsGloas;
 import tech.pegasys.teku.spec.signatures.SigningRootUtil;
+import tech.pegasys.teku.spec.util.DataStructureUtil;
 import tech.pegasys.teku.statetransition.block.ReceivedBlockEventsChannel;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoice;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoiceStateProvider;
@@ -227,7 +230,7 @@ public class BlockGossipValidatorTest {
   }
 
   @TestTemplate
-  void shouldIgnoreBlockWithParentUnavailableAndUnknownProposerIndex() {
+  void shouldRejectBlockWithParentUnavailableAndProposerIndexBeyondHeadState() {
     final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
     storageSystem.chainUpdater().setCurrentSlot(nextSlot);
     final UInt64 unknownProposerIndex = UInt64.valueOf(1_000_000);
@@ -241,8 +244,36 @@ public class BlockGossipValidatorTest {
 
     assertThat(blockGossipValidator.validate(block, true))
         .isCompletedWithValue(
+            InternalValidationResult.reject(
+                "Block proposer index %s is not a known validator", unknownProposerIndex));
+  }
+
+  @TestTemplate
+  void shouldIgnoreBlockWithParentUnavailableAndProposerIndexNotYetFinalized() {
+    // the head state has the proposer but the finalized state has no validators yet
+    final GossipValidationHelper gossipValidationHelper =
+        spy(new GossipValidationHelper(spec, recentChainData, storageSystem.getMetricsSystem()));
+    doReturn(new DataStructureUtil(spec).randomBeaconState(0))
+        .when(gossipValidationHelper)
+        .getLatestFinalizedState();
+    final BlockGossipValidator validator =
+        new BlockGossipValidator(
+            spec, gossipValidationHelper, mock(ReceivedBlockEventsChannel.class));
+
+    final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
+    storageSystem.chainUpdater().setCurrentSlot(nextSlot);
+    final SignedBeaconBlock signedBlock =
+        storageSystem.chainBuilder().generateBlockAtSlot(nextSlot).getBlock();
+    final SignedBeaconBlock block =
+        SignedBeaconBlock.create(
+            spec,
+            createBlockWithUnknownParent(signedBlock, Optional.empty()),
+            BLSTestUtil.randomSignature(0));
+
+    assertThat(validator.validate(block, true))
+        .isCompletedWithValue(
             InternalValidationResult.ignore(
-                "Block proposer index %s is not yet known", unknownProposerIndex));
+                "Block proposer index %s is not yet finalized", block.getProposerIndex()));
   }
 
   @TestTemplate

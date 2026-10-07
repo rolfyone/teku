@@ -117,7 +117,7 @@ public class BlockGossipValidator {
      */
     if (gossipValidationHelper.isSlotFromFuture(block.getSlot())) {
       LOG.trace("BlockValidator: Block is from the future. Saving for future processing.");
-      return completedFuture(checkSignatureBeforeSavingForFuture(block));
+      return checkSignatureBeforeSavingForFuture(block);
     }
 
     if (gossipValidationHelper.isBlockAvailable(block.getRoot())) {
@@ -136,7 +136,7 @@ public class BlockGossipValidator {
      */
     if (!gossipValidationHelper.isBlockAvailable(block.getParentRoot())) {
       LOG.trace("Block parent is not available. Saving for future processing.");
-      return completedFuture(checkSignatureBeforeSavingForFuture(block));
+      return checkSignatureBeforeSavingForFuture(block);
     }
 
     /*
@@ -157,7 +157,7 @@ public class BlockGossipValidator {
     if (maybeParentBlockSlot.isEmpty()) {
       LOG.trace(
           "BlockValidator: Parent block does not exist. It will be saved for future processing");
-      return completedFuture(checkSignatureBeforeSavingForFuture(block));
+      return checkSignatureBeforeSavingForFuture(block);
     }
 
     /*
@@ -368,28 +368,46 @@ public class BlockGossipValidator {
    * the block was proposed by the expected proposer depends on its branch's shuffling and is
    * checked, along with the rest of the block, once it is processed.
    *
-   * <p>A proposer index missing from the finalized state is ignored rather than rejected: our view
-   * of finality may lag the network, so the validator could have been activated since.
+   * <p>A proposer index missing from the finalized state is checked against the head state. If the
+   * head state doesn't have it either, the block is rejected: a validator can only propose several
+   * epochs after it is added to the registry, and gossip is only processed while our head is
+   * recent, so the index can't belong to a proposer on any branch we follow. If only the head state
+   * has it, the block is ignored rather than rejected, because our view of finality may lag the
+   * network and the validator could have been activated since.
    */
-  private InternalValidationResult checkSignatureBeforeSavingForFuture(
+  private SafeFuture<InternalValidationResult> checkSignatureBeforeSavingForFuture(
       final SignedBeaconBlock block) {
     final Optional<ForkInfo> maybeForkInfo =
         gossipValidationHelper.getForkInfo(spec.computeEpochAtSlot(block.getSlot()));
     if (maybeForkInfo.isEmpty()) {
-      return InternalValidationResult.SAVE_FOR_FUTURE;
+      return completedFuture(InternalValidationResult.SAVE_FOR_FUTURE);
     }
     final Optional<BLSPublicKey> maybeProposerPublicKey =
         spec.getValidatorPubKey(
             gossipValidationHelper.getLatestFinalizedState(), block.getProposerIndex());
     if (maybeProposerPublicKey.isEmpty()) {
-      return ignore("Block proposer index %s is not yet known", block.getProposerIndex());
+      return gossipValidationHelper
+          .getHeadState()
+          .thenApply(
+              maybeHeadState -> checkProposerIndexMissingFromFinalizedState(block, maybeHeadState));
     }
     final Bytes signingRoot =
         signingRootUtil.signingRootForSignBlock(block.getMessage(), maybeForkInfo.get());
     if (!BLS.verify(maybeProposerPublicKey.get(), signingRoot, block.getSignature())) {
-      return reject("Block signature is invalid");
+      return completedFuture(reject("Block signature is invalid"));
     }
-    return InternalValidationResult.SAVE_FOR_FUTURE;
+    return completedFuture(InternalValidationResult.SAVE_FOR_FUTURE);
+  }
+
+  private InternalValidationResult checkProposerIndexMissingFromFinalizedState(
+      final SignedBeaconBlock block, final Optional<BeaconState> maybeHeadState) {
+    if (maybeHeadState.isPresent()
+        && block
+            .getProposerIndex()
+            .isGreaterThanOrEqualTo(maybeHeadState.get().getValidators().size())) {
+      return reject("Block proposer index %s is not a known validator", block.getProposerIndex());
+    }
+    return ignore("Block proposer index %s is not yet finalized", block.getProposerIndex());
   }
 
   private boolean blockSignatureIsValidWithRespectToProposerIndex(
