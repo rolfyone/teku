@@ -9,6 +9,7 @@
 ### Breaking Changes
 
 ### Additions and Improvements
+ - Scheduled Gloas fork for the HOODI network at epoch 132352, which is 26 Oct 2026 17:42:48 UTC.
  - Added gossipsub metrics `libp2p_gossip_gossipsub_*` (off by default; enable them with `--Xmetrics-additional-categories=LIBP2P_GOSSIP`).
  - Block production now resends `forkchoiceUpdated` when the execution layer returned no `payloadId` (e.g. `SYNCING`) for the one sent ahead of the proposal slot, instead of missing the proposal. A warning is logged when no `payloadId` is returned.
  - Set gossip `max_total_fields` limit to 32768. See [#11341](https://github.com/Consensys-Incorporated/teku/issues/11341).
