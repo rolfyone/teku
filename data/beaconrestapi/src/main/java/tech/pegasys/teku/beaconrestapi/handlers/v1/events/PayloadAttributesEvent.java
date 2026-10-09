@@ -78,6 +78,12 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
               "parent_block_hash",
               BYTES32_TYPE,
               PayloadAttributesEvent.Data::parentExecutionBlockHash)
+          .withOptionalField(
+              "safe_block_hash", BYTES32_TYPE, PayloadAttributesEvent.Data::safeExecutionBlockHash)
+          .withOptionalField(
+              "finalized_block_hash",
+              BYTES32_TYPE,
+              PayloadAttributesEvent.Data::finalizedExecutionBlockHash)
           .withField("proposer_index", UINT64_TYPE, data -> data.proposerIndex)
           .withOptionalField(
               "inclusion_list_bits",
@@ -108,6 +114,8 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
       Bytes32 parentBlockRoot,
       Optional<UInt64> parentExecutionBlockNumber,
       Bytes32 parentExecutionBlockHash,
+      Optional<Bytes32> safeExecutionBlockHash,
+      Optional<Bytes32> finalizedExecutionBlockHash,
       UInt64 proposerIndex,
       Optional<Bytes> inclusionListBits,
       PayloadAttributes payloadAttributes) {}
@@ -124,7 +132,8 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
 
   /**
    * @param forkChoiceState The fork choice state before sending the fCu so can use it to get
-   *     parent_block_number (pre-gloas) and parent_block_hash
+   *     parent_block_number (pre-gloas), parent_block_hash, and safe_block_hash and
+   *     finalized_block_hash (gloas onwards)
    */
   static SafeFuture<Optional<PayloadAttributesEvent>> create(
       final Spec spec,
@@ -155,6 +164,7 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
       final ForkChoiceState forkChoiceState,
       final Optional<SszBitvector> inclusionListBits) {
     final SpecMilestone milestone = spec.atSlot(payloadAttributes.proposalSlot()).getMilestone();
+    final boolean isGloasOrLater = milestone.isGreaterThanOrEqualTo(SpecMilestone.GLOAS);
     final boolean inclusionListAvailable =
         spec.isInclusionListAvailableAtSlot(payloadAttributes.proposalSlot());
     final PayloadAttributesData data =
@@ -163,10 +173,16 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
             new PayloadAttributesEvent.Data(
                 payloadAttributes.proposalSlot(),
                 payloadAttributes.parentBeaconBlock().blockRoot(),
-                milestone.isGreaterThanOrEqualTo(SpecMilestone.GLOAS)
+                isGloasOrLater
                     ? Optional.empty()
                     : Optional.of(forkChoiceState.headExecutionBlockNumber()),
                 forkChoiceState.headExecutionBlockHash(),
+                isGloasOrLater
+                    ? Optional.of(forkChoiceState.safeExecutionBlockHash())
+                    : Optional.empty(),
+                isGloasOrLater
+                    ? Optional.of(forkChoiceState.finalizedExecutionBlockHash())
+                    : Optional.empty(),
                 payloadAttributes.proposerIndex(),
                 inclusionListAvailable
                     ? inclusionListBits.map(SszBitvector::sszSerialize)
@@ -180,10 +196,10 @@ public class PayloadAttributesEvent extends Event<PayloadAttributesData> {
                     milestone.isGreaterThanOrEqualTo(SpecMilestone.DENEB)
                         ? Optional.of(payloadAttributes.parentBeaconBlock().blockRoot())
                         : Optional.empty(),
-                    milestone.isGreaterThanOrEqualTo(SpecMilestone.GLOAS)
+                    isGloasOrLater
                         ? Optional.of(payloadAttributes.proposalSlot())
                         : Optional.empty(),
-                    milestone.isGreaterThanOrEqualTo(SpecMilestone.GLOAS)
+                    isGloasOrLater
                         ? Optional.of(payloadAttributes.targetGasLimit())
                         : Optional.empty(),
                     inclusionListAvailable
