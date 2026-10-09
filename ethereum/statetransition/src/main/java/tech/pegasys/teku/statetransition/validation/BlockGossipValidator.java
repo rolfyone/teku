@@ -362,18 +362,13 @@ public class BlockGossipValidator {
    * Without this check any peer could fill the future and pending block queues with blocks nobody
    * signed, at no cost to its peer score.
    *
-   * <p>The parent state isn't available, so the proposer's pubkey is taken from the latest
-   * finalized state and the signing domain from the fork schedule. Both are the same on every
-   * branch, so an invalid signature is rejected regardless of which branch the block is on. Whether
-   * the block was proposed by the expected proposer depends on its branch's shuffling and is
-   * checked, along with the rest of the block, once it is processed.
+   * <p>The parent state isn't available, so the signing domain is taken from the fork schedule and
+   * the proposer's pubkey from the latest finalized state, or from the head state for a validator
+   * that isn't finalized yet. Whether the block was proposed by the expected proposer depends on
+   * its branch's shuffling and is checked, along with the rest of the block, once it is processed.
    *
-   * <p>A proposer index missing from the finalized state is checked against the head state. If the
-   * head state doesn't have it either, the block is rejected: a validator can only propose several
-   * epochs after it is added to the registry, and gossip is only processed while our head is
-   * recent, so the index can't belong to a proposer on any branch we follow. If only the head state
-   * has it, the block is ignored rather than rejected, because our view of finality may lag the
-   * network and the validator could have been activated since.
+   * <p>Matching Prysm, an invalid signature is rejected, and a proposer index that the head state
+   * doesn't have is ignored rather than rejected.
    */
   private SafeFuture<InternalValidationResult> checkSignatureBeforeSavingForFuture(
       final SignedBeaconBlock block) {
@@ -382,32 +377,41 @@ public class BlockGossipValidator {
     if (maybeForkInfo.isEmpty()) {
       return completedFuture(InternalValidationResult.SAVE_FOR_FUTURE);
     }
-    final Optional<BLSPublicKey> maybeProposerPublicKey =
+    final Optional<BLSPublicKey> maybeFinalizedProposerPublicKey =
         spec.getValidatorPubKey(
             gossipValidationHelper.getLatestFinalizedState(), block.getProposerIndex());
-    if (maybeProposerPublicKey.isEmpty()) {
-      return gossipValidationHelper
-          .getHeadState()
-          .thenApply(
-              maybeHeadState -> checkProposerIndexMissingFromFinalizedState(block, maybeHeadState));
+    if (maybeFinalizedProposerPublicKey.isPresent()) {
+      return completedFuture(
+          checkProposerSignature(
+              block, maybeFinalizedProposerPublicKey.get(), maybeForkInfo.get()));
     }
-    final Bytes signingRoot =
-        signingRootUtil.signingRootForSignBlock(block.getMessage(), maybeForkInfo.get());
-    if (!BLS.verify(maybeProposerPublicKey.get(), signingRoot, block.getSignature())) {
-      return completedFuture(reject("Block signature is invalid"));
-    }
-    return completedFuture(InternalValidationResult.SAVE_FOR_FUTURE);
+    // the validator may have been added since the latest finalized state, so use the head state
+    return gossipValidationHelper
+        .getHeadState()
+        .thenApply(
+            maybeHeadState ->
+                maybeHeadState
+                    .flatMap(
+                        headState -> spec.getValidatorPubKey(headState, block.getProposerIndex()))
+                    .map(
+                        proposerPublicKey ->
+                            checkProposerSignature(block, proposerPublicKey, maybeForkInfo.get()))
+                    .orElseGet(
+                        () ->
+                            ignore(
+                                "Block proposer index %s is not a known validator",
+                                block.getProposerIndex())));
   }
 
-  private InternalValidationResult checkProposerIndexMissingFromFinalizedState(
-      final SignedBeaconBlock block, final Optional<BeaconState> maybeHeadState) {
-    if (maybeHeadState.isPresent()
-        && block
-            .getProposerIndex()
-            .isGreaterThanOrEqualTo(maybeHeadState.get().getValidators().size())) {
-      return reject("Block proposer index %s is not a known validator", block.getProposerIndex());
+  private InternalValidationResult checkProposerSignature(
+      final SignedBeaconBlock block,
+      final BLSPublicKey proposerPublicKey,
+      final ForkInfo forkInfo) {
+    final Bytes signingRoot = signingRootUtil.signingRootForSignBlock(block.getMessage(), forkInfo);
+    if (!BLS.verify(proposerPublicKey, signingRoot, block.getSignature())) {
+      return reject("Block signature is invalid");
     }
-    return ignore("Block proposer index %s is not yet finalized", block.getProposerIndex());
+    return InternalValidationResult.SAVE_FOR_FUTURE;
   }
 
   private boolean blockSignatureIsValidWithRespectToProposerIndex(

@@ -230,7 +230,7 @@ public class BlockGossipValidatorTest {
   }
 
   @TestTemplate
-  void shouldRejectBlockWithParentUnavailableAndProposerIndexBeyondHeadState() {
+  void shouldIgnoreBlockWithParentUnavailableAndProposerIndexBeyondHeadState() {
     final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
     storageSystem.chainUpdater().setCurrentSlot(nextSlot);
     final UInt64 unknownProposerIndex = UInt64.valueOf(1_000_000);
@@ -244,36 +244,61 @@ public class BlockGossipValidatorTest {
 
     assertThat(blockGossipValidator.validate(block, true))
         .isCompletedWithValue(
-            InternalValidationResult.reject(
+            InternalValidationResult.ignore(
                 "Block proposer index %s is not a known validator", unknownProposerIndex));
   }
 
   @TestTemplate
-  void shouldIgnoreBlockWithParentUnavailableAndProposerIndexNotYetFinalized() {
-    // the head state has the proposer but the finalized state has no validators yet
+  void shouldRejectInvalidSignatureWhenProposerIndexIsOnlyInHeadState() {
+    final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
+    storageSystem.chainUpdater().setCurrentSlot(nextSlot);
+    final SignedBeaconBlock block =
+        SignedBeaconBlock.create(
+            spec,
+            createBlockWithUnknownParent(
+                storageSystem.chainBuilder().generateBlockAtSlot(nextSlot).getBlock(),
+                Optional.empty()),
+            BLSTestUtil.randomSignature(0));
+
+    assertThat(validatorWithoutFinalizedValidators().validate(block, true))
+        .isCompletedWithValue(InternalValidationResult.reject("Block signature is invalid"));
+  }
+
+  @TestTemplate
+  void shouldSaveForFutureWithValidSignatureWhenProposerIndexIsOnlyInHeadState() {
+    final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
+    storageSystem.chainUpdater().setCurrentSlot(nextSlot);
+    final BeaconBlock blockWithUnknownParent =
+        createBlockWithUnknownParent(
+            storageSystem.chainBuilder().generateBlockAtSlot(nextSlot).getBlock(),
+            Optional.empty());
+    final BLSSignature signature =
+        storageSystem
+            .chainBuilder()
+            .getSigner(blockWithUnknownParent.getProposerIndex().intValue())
+            .signBlock(
+                blockWithUnknownParent,
+                storageSystem.chainBuilder().getLatestBlockAndState().getState().getForkInfo())
+            .join();
+    final SignedBeaconBlock block =
+        SignedBeaconBlock.create(spec, blockWithUnknownParent, signature);
+
+    assertThat(validatorWithoutFinalizedValidators().validate(block, true))
+        .isCompletedWithValueMatching(InternalValidationResult::isSaveForFuture);
+  }
+
+  /**
+   * A validator whose latest finalized state has no validators, so every proposer is only in the
+   * head state.
+   */
+  private BlockGossipValidator validatorWithoutFinalizedValidators() {
     final GossipValidationHelper gossipValidationHelper =
         spy(new GossipValidationHelper(spec, recentChainData, storageSystem.getMetricsSystem()));
     doReturn(new DataStructureUtil(spec).randomBeaconState(0))
         .when(gossipValidationHelper)
         .getLatestFinalizedState();
-    final BlockGossipValidator validator =
-        new BlockGossipValidator(
-            spec, gossipValidationHelper, mock(ReceivedBlockEventsChannel.class));
-
-    final UInt64 nextSlot = recentChainData.getHeadSlot().plus(ONE);
-    storageSystem.chainUpdater().setCurrentSlot(nextSlot);
-    final SignedBeaconBlock signedBlock =
-        storageSystem.chainBuilder().generateBlockAtSlot(nextSlot).getBlock();
-    final SignedBeaconBlock block =
-        SignedBeaconBlock.create(
-            spec,
-            createBlockWithUnknownParent(signedBlock, Optional.empty()),
-            BLSTestUtil.randomSignature(0));
-
-    assertThat(validator.validate(block, true))
-        .isCompletedWithValue(
-            InternalValidationResult.ignore(
-                "Block proposer index %s is not yet finalized", block.getProposerIndex()));
+    return new BlockGossipValidator(
+        spec, gossipValidationHelper, mock(ReceivedBlockEventsChannel.class));
   }
 
   @TestTemplate
