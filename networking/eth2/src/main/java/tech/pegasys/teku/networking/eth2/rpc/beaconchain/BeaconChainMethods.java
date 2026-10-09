@@ -690,7 +690,7 @@ public class BeaconChainMethods {
     return Optional.of(
         new SingleProtocolEth2RpcMethod<>(
             asyncRunner,
-            BeaconChainMethodIds.INCLUSION_LIST_BY_COMMITTEE_INDICES,
+            BeaconChainMethodIds.INCLUSION_LISTS_BY_INDICES,
             1,
             rpcEncoding,
             inclusionListByCommitteeRequestMessageSchema,

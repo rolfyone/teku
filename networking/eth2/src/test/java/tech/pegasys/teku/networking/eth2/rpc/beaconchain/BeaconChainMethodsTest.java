@@ -203,6 +203,25 @@ public class BeaconChainMethodsTest {
                         "/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/ssz_snappy"));
   }
 
+  @Test
+  public void shouldCreateInclusionListsByIndicesWithHezeEnabled() {
+    final BeaconChainMethods methods = getMethods(TestSpecFactory.createMinimalHeze());
+
+    assertThat(methods.inclusionListByCommitteeIndices())
+        .hasValueSatisfying(
+            method ->
+                assertThat(method.getIds())
+                    .containsExactly(
+                        "/eth2/beacon_chain/req/inclusion_lists_by_indices/1/ssz_snappy"));
+  }
+
+  @Test
+  public void shouldNotCreateInclusionListsByIndicesWithHezeDisabled() {
+    final BeaconChainMethods methods = getMethods(TestSpecFactory.createMinimalGloas());
+
+    assertThat(methods.inclusionListByCommitteeIndices()).isEmpty();
+  }
+
   private BeaconChainMethods getMethods() {
     return getMethods(TestSpecFactory.createMinimalPhase0());
   }
