@@ -13,14 +13,18 @@
 
 package tech.pegasys.teku.statetransition.inclusionlist;
 
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,6 +40,7 @@ import tech.pegasys.teku.spec.datastructures.execution.versions.heze.SignedInclu
 import tech.pegasys.teku.spec.datastructures.forkchoice.InclusionListStore;
 import tech.pegasys.teku.spec.datastructures.inclusionlist.SignedInclusionListListener;
 import tech.pegasys.teku.spec.logic.common.statetransition.results.InclusionListImportResult;
+import tech.pegasys.teku.spec.logic.versions.heze.util.InclusionListUtil;
 import tech.pegasys.teku.statetransition.forkchoice.ForkChoice;
 import tech.pegasys.teku.statetransition.util.ShufflingDependentRootUtil;
 import tech.pegasys.teku.statetransition.validation.InternalValidationResult;
@@ -147,18 +152,82 @@ public class InclusionListManager implements SlotEventsChannel {
             });
   }
 
-  public List<SignedInclusionList> getInclusionLists(
+  /**
+   * Inclusion lists for an {@code InclusionListsByIndices} request. {@code committeeIndices} are
+   * positions in {@code get_inclusion_list_committee(state, slot)}, where {@code state} is the
+   * state of the {@code dependentRoot} block processed up to {@code slot}. Lists from validators
+   * that equivocated for this slot and dependent root are not returned.
+   */
+  public SafeFuture<List<SignedInclusionList>> getInclusionLists(
       final UInt64 slot, final Bytes32 dependentRoot, final SszBitvector committeeIndices) {
+    final Optional<InclusionListUtil> maybeInclusionListUtil =
+        spec.atSlot(slot).getInclusionListUtil();
+    // The slot and dependent root come from the peer, so only regenerate the dependent state when
+    // there is something to serve: lists are only retained for recent slots, which bounds the
+    // slot processing a request can cause.
+    if (maybeInclusionListUtil.isEmpty()
+        || !isServableSlot(slot)
+        || !hasInclusionListsFor(slot, dependentRoot)
+        || !isDependentBlockAtOrBefore(dependentRoot, slot)) {
+      return SafeFuture.completedFuture(List.of());
+    }
+    return recentChainData
+        .retrieveBlockState(new SlotAndBlockRoot(slot, dependentRoot))
+        .thenApply(
+            maybeState ->
+                maybeState
+                    .map(
+                        state -> {
+                          final IntList committee =
+                              maybeInclusionListUtil.get().getInclusionListCommittee(state, slot);
+                          final Set<UInt64> requestedValidatorIndices =
+                              committeeIndices
+                                  .getAllSetBits()
+                                  .intStream()
+                                  .filter(position -> position < committee.size())
+                                  .mapToObj(position -> UInt64.valueOf(committee.getInt(position)))
+                                  .collect(Collectors.toCollection(LinkedHashSet::new));
+                          return getInclusionLists(slot, dependentRoot, requestedValidatorIndices);
+                        })
+                    .orElse(List.of()));
+  }
+
+  /** Inclusion lists are only valid on gossip up to one slot ahead, within clock disparity. */
+  private boolean isServableSlot(final UInt64 slot) {
+    return recentChainData
+        .getCurrentSlot()
+        .map(currentSlot -> slot.isLessThanOrEqualTo(currentSlot.increment()))
+        .orElse(false);
+  }
+
+  private boolean hasInclusionListsFor(final UInt64 slot, final Bytes32 dependentRoot) {
+    final Map<UInt64, List<SignedInclusionList>> inclusionListsForSlot =
+        slotToInclusionListsByValidatorIndex.get(slot);
+    return inclusionListsForSlot != null
+        && inclusionListsForSlot.values().stream()
+            .flatMap(List::stream)
+            .anyMatch(
+                signedInclusionList ->
+                    signedInclusionList.getMessage().getDependentRoot().equals(dependentRoot));
+  }
+
+  /** A block after {@code slot} can't be the dependent root for inclusion lists at that slot. */
+  private boolean isDependentBlockAtOrBefore(final Bytes32 dependentRoot, final UInt64 slot) {
+    return recentChainData
+        .getSlotForBlockRoot(dependentRoot)
+        .map(dependentSlot -> dependentSlot.isLessThanOrEqualTo(slot))
+        .orElse(false);
+  }
+
+  private List<SignedInclusionList> getInclusionLists(
+      final UInt64 slot, final Bytes32 dependentRoot, final Set<UInt64> validatorIndices) {
     final Map<UInt64, List<SignedInclusionList>> inclusionListsForSlot =
         slotToInclusionListsByValidatorIndex.getOrDefault(slot, new ConcurrentHashMap<>());
-    return inclusionListsForSlot.entrySet().stream()
-        .filter(
-            validatorIndexToInclusionLists ->
-                committeeIndices.isSet(validatorIndexToInclusionLists.getKey().intValue()))
+    return validatorIndices.stream()
         .flatMap(
-            validatorIndexToInclusionLists -> {
+            validatorIndex -> {
               final List<SignedInclusionList> matchingInclusionLists =
-                  validatorIndexToInclusionLists.getValue().stream()
+                  inclusionListsForSlot.getOrDefault(validatorIndex, List.of()).stream()
                       .filter(
                           signedInclusionList ->
                               signedInclusionList

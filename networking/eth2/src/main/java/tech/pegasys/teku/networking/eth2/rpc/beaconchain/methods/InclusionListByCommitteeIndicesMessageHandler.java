@@ -17,7 +17,6 @@ import static tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus.INVAL
 
 import com.google.common.base.Throwables;
 import java.nio.channels.ClosedChannelException;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.logging.log4j.LogManager;
@@ -116,30 +115,34 @@ public class InclusionListByCommitteeIndicesMessageHandler
     totalInclusionListsRequestedCounter.inc(requestedCount);
 
     final AtomicInteger sentInclusionLists = new AtomicInteger(0);
-    final List<SignedInclusionList> signedInclusionLists =
-        inclusionListManager.getInclusionLists(
-            message.getSlot(), message.getDependentRoot(), message.getCommitteeIndices());
-    SafeFuture<Void> future = SafeFuture.COMPLETE;
-    for (SignedInclusionList signedInclusionList : signedInclusionLists) {
-      future =
-          future.thenCompose(
-              __ ->
-                  callback
-                      .respond(signedInclusionList)
-                      .thenRun(sentInclusionLists::incrementAndGet));
-    }
-    future.finish(
-        () -> {
-          if (sentInclusionLists.get() != requestedCount) {
-            peer.adjustInclusionListsRequest(
-                inclusionListsRequestApproval.get(), sentInclusionLists.get());
-          }
-          callback.completeSuccessfully();
-        },
-        err -> {
-          peer.adjustInclusionListsRequest(inclusionListsRequestApproval.get(), 0);
-          handleError(callback, err);
-        });
+    inclusionListManager
+        .getInclusionLists(
+            message.getSlot(), message.getDependentRoot(), message.getCommitteeIndices())
+        .thenCompose(
+            signedInclusionLists -> {
+              SafeFuture<Void> future = SafeFuture.COMPLETE;
+              for (final SignedInclusionList signedInclusionList : signedInclusionLists) {
+                future =
+                    future.thenCompose(
+                        __ ->
+                            callback
+                                .respond(signedInclusionList)
+                                .thenRun(sentInclusionLists::incrementAndGet));
+              }
+              return future;
+            })
+        .finish(
+            () -> {
+              if (sentInclusionLists.get() != requestedCount) {
+                peer.adjustInclusionListsRequest(
+                    inclusionListsRequestApproval.get(), sentInclusionLists.get());
+              }
+              callback.completeSuccessfully();
+            },
+            err -> {
+              peer.adjustInclusionListsRequest(inclusionListsRequestApproval.get(), 0);
+              handleError(callback, err);
+            });
   }
 
   private void handleError(

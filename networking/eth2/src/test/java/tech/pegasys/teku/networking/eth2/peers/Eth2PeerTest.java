@@ -258,6 +258,16 @@ class Eth2PeerTest {
   }
 
   @Test
+  void adjustInclusionListsRequest_shouldAdjustInclusionListRateTracker() {
+    final RequestKey requestKey = new RequestKey(UInt64.ZERO, 1);
+
+    peer.adjustInclusionListsRequest(requestKey, 2);
+
+    verify(inclusionListRateTracker).adjustRequestObjectCount(requestKey, 2);
+    verifyNoInteractions(blobSidecarsRateTracker);
+  }
+
+  @Test
   @SuppressWarnings({"unchecked", "FutureReturnValueIgnored"})
   void shouldSendRequest_InclusionListsByCommitteeIndices() {
     final Spec hezeSpec = TestSpecFactory.createMinimalHeze();

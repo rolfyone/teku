@@ -202,7 +202,7 @@ public interface Eth2Peer extends Peer, SyncSource {
 
   default void adjustInclusionListsRequest(
       final RequestKey requestKey, final long returnedInclusionListsCount) {
-    adjustObjectsRequest(RequestObject.BLOB_SIDECAR, requestKey, returnedInclusionListsCount);
+    adjustObjectsRequest(RequestObject.INCLUSION_LIST, requestKey, returnedInclusionListsCount);
   }
 
   boolean approveRequest();

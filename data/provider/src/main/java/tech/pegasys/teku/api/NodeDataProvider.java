@@ -147,7 +147,7 @@ public class NodeDataProvider {
     return inclusionListManager.getInclusionListBits(proposalSlot, parentRoot);
   }
 
-  public List<SignedInclusionList> getInclusionLists(
+  public SafeFuture<List<SignedInclusionList>> getInclusionLists(
       final UInt64 slot, final Bytes32 dependentRoot, final SszBitvector committeeIndices) {
     return inclusionListManager.getInclusionLists(slot, dependentRoot, committeeIndices);
   }
