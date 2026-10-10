@@ -73,6 +73,7 @@ import tech.pegasys.teku.spec.datastructures.forkchoice.ForkChoicePayloadStatus;
 import tech.pegasys.teku.spec.datastructures.forkchoice.InclusionListStore;
 import tech.pegasys.teku.spec.datastructures.forkchoice.InvalidCheckpointException;
 import tech.pegasys.teku.spec.datastructures.forkchoice.ProtoNodeData;
+import tech.pegasys.teku.spec.datastructures.forkchoice.ReadOnlyForkChoiceStrategy;
 import tech.pegasys.teku.spec.datastructures.forkchoice.ReadOnlyStore;
 import tech.pegasys.teku.spec.datastructures.forkchoice.SlotAndForkChoiceNode;
 import tech.pegasys.teku.spec.datastructures.forkchoice.VoteTracker;
@@ -1270,28 +1271,52 @@ public class ForkChoice implements ForkChoiceUpdatedResultSubscriber {
 
   /**
    * Records inclusion list satisfaction from a forkchoiceUpdated response. Per the Heze optimistic
-   * sync spec this only applies when the head's own payload transitions from NOT_VALIDATED to
-   * VALID: the response is about the block's payload only for a FULL node (an EMPTY node's
-   * execution head is its parent's payload), and a payload that was already VALID had its
+   * sync spec this only applies to the block whose payload transitions from NOT_VALIDATED to VALID.
+   * The response is about the execution head, which is the head's own payload for a FULL head, but
+   * the nearest FULL ancestor's payload for an EMPTY head. A payload that was already VALID had its
    * satisfaction recorded when it was imported, which must not change.
    */
   private SafeFuture<Void> recordPayloadInclusionListSatisfaction(
-      final ForkChoiceNode node,
+      final ForkChoiceNode headNode,
       final PayloadStatus payloadStatus,
       final PayloadValidationResult validationResult) {
     if (!validationResult.getStatus().hasValidStatus()
-        || !isPayloadInclusionListUnsatisfied(payloadStatus)
-        || node.payloadStatus() != ForkChoicePayloadStatus.PAYLOAD_STATUS_FULL
-        || !isOptimistic(node)) {
+        || !isPayloadInclusionListUnsatisfied(payloadStatus)) {
+      return SafeFuture.COMPLETE;
+    }
+    final Optional<ForkChoiceNode> maybeOptimisticPayloadNode =
+        findExecutionHeadFullNode(headNode).filter(this::isOptimistic);
+    if (maybeOptimisticPayloadNode.isEmpty()) {
       return SafeFuture.COMPLETE;
     }
 
     final StoreTransaction transaction = recentChainData.startStoreTransaction();
-    recordPayloadInclusionListSatisfaction(transaction, node.blockRoot(), payloadStatus);
+    recordPayloadInclusionListSatisfaction(
+        transaction, maybeOptimisticPayloadNode.get().blockRoot(), payloadStatus);
     return transaction.commit();
   }
 
-  /** Safe to call off the fork choice thread, as the read-only strategy takes its own lock. */
+  /**
+   * Finds the FULL node whose payload is the execution head of {@code headNode}. EMPTY nodes don't
+   * have a payload of their own, so walk up through them to the nearest FULL ancestor. Safe to call
+   * off the fork choice thread, as the read-only strategy takes its own lock.
+   */
+  private Optional<ForkChoiceNode> findExecutionHeadFullNode(final ForkChoiceNode headNode) {
+    final Optional<ReadOnlyForkChoiceStrategy> maybeForkChoiceStrategy =
+        recentChainData.getForkChoiceStrategy();
+    if (maybeForkChoiceStrategy.isEmpty()) {
+      return Optional.empty();
+    }
+    final ReadOnlyForkChoiceStrategy forkChoiceStrategy = maybeForkChoiceStrategy.get();
+    Optional<ForkChoiceNode> maybeNode = Optional.of(headNode);
+    while (maybeNode.isPresent()
+        && maybeNode.get().payloadStatus() == ForkChoicePayloadStatus.PAYLOAD_STATUS_EMPTY) {
+      maybeNode = forkChoiceStrategy.getParentBeaconBlockNode(maybeNode.get());
+    }
+    return maybeNode.filter(
+        node -> node.payloadStatus() == ForkChoicePayloadStatus.PAYLOAD_STATUS_FULL);
+  }
+
   private boolean isOptimistic(final ForkChoiceNode node) {
     return recentChainData
         .getForkChoiceStrategy()

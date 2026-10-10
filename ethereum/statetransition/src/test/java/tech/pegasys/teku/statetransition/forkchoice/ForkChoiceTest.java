@@ -2020,12 +2020,12 @@ class ForkChoiceTest {
   }
 
   @Test
-  void onForkChoiceUpdatedResult_shouldNotRecordSatisfactionFromEmptyNode() {
+  void onForkChoiceUpdatedResult_shouldRecordSatisfactionOfEmptyNodesParentPayload() {
     setupWithSpec(
         TestSpecFactory.createMinimalHeze(
             builder -> builder.blsSignatureVerifier(BLSSignatureVerifier.NOOP)));
     assertThat(forkChoice.applyGenesisExecutionPayloadForGloas()).isCompleted();
-    // Payloads stay optimistic, so the EMPTY node below is optimistic too
+    // Payloads stay optimistic until the forkchoiceUpdated response below validates them
     setForkChoiceNotifierForkChoiceUpdatedResult(PayloadStatus.SYNCING);
     executionLayer.setPayloadStatus(PayloadStatus.ACCEPTED);
 
@@ -2035,22 +2035,60 @@ class ForkChoiceTest {
     final SignedBlockAndState targetBlock = chainBuilder.generateBlockAtSlot(UInt64.valueOf(2));
     importBlock(targetBlock);
     final ForkChoiceNode emptyNode = ForkChoiceNode.createEmpty(targetBlock.getRoot());
+    final ForkChoiceNode parentFullNode = ForkChoiceNode.createFull(parentBlock.getRoot());
+    assertThat(
+            recentChainData.getStore().getForkChoiceStrategy().getParentBeaconBlockNode(emptyNode))
+        .contains(parentFullNode);
     assertThat(
             recentChainData
                 .getStore()
                 .getForkChoiceStrategy()
-                .getNodeData(emptyNode)
+                .getNodeData(parentFullNode)
                 .orElseThrow()
                 .isOptimistic())
         .isTrue();
 
-    // An EMPTY node's execution head is its parent's payload, so the response says nothing about
-    // whether this block's payload satisfies the inclusion lists
+    // An EMPTY node's execution head is its parent's payload, so the response is the parent
+    // payload's transition to VALID and says nothing about this block
     notifyForkChoiceUpdatedResult(
         emptyNode,
         targetBlock.getSlot(),
         PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(false)));
 
+    assertThat(
+            recentChainData
+                .getStore()
+                .getForkChoiceStrategy()
+                .getNodeData(parentFullNode)
+                .orElseThrow()
+                .isOptimistic())
+        .isFalse();
+    assertThat(recentChainData.getStore().satisfiesInclusionList(parentBlock.getRoot())).isFalse();
+    assertThat(recentChainData.getStore().satisfiesInclusionList(targetBlock.getRoot())).isTrue();
+  }
+
+  @Test
+  void onForkChoiceUpdatedResult_shouldNotChangeSatisfactionOfEmptyNodesValidParentPayload() {
+    setupWithSpec(
+        TestSpecFactory.createMinimalHeze(
+            builder -> builder.blsSignatureVerifier(BLSSignatureVerifier.NOOP)));
+    assertThat(forkChoice.applyGenesisExecutionPayloadForGloas()).isCompleted();
+
+    final SignedBlockAndState parentBlock = chainBuilder.generateBlockAtSlot(ONE);
+    importBlock(parentBlock);
+    // The parent payload is validated, and satisfies the inclusion lists, when it's imported
+    executionLayer.setPayloadStatus(
+        PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(true)));
+    importPayload(parentBlock);
+    final SignedBlockAndState targetBlock = chainBuilder.generateBlockAtSlot(UInt64.valueOf(2));
+    importBlock(targetBlock);
+
+    notifyForkChoiceUpdatedResult(
+        ForkChoiceNode.createEmpty(targetBlock.getRoot()),
+        targetBlock.getSlot(),
+        PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(false)));
+
+    assertThat(recentChainData.getStore().satisfiesInclusionList(parentBlock.getRoot())).isTrue();
     assertThat(recentChainData.getStore().satisfiesInclusionList(targetBlock.getRoot())).isTrue();
   }
 
