@@ -16,7 +16,11 @@ package tech.pegasys.teku.statetransition.inclusionlist;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static tech.pegasys.teku.infrastructure.async.SafeFutureAssert.safeJoin;
 
@@ -183,7 +187,7 @@ class InclusionListManagerTest {
   }
 
   @Test
-  void getInclusionLists_shouldReturnEmptyWhenDependentStateIsUnavailable() {
+  void getInclusionLists_shouldReturnEmptyWhenDependentRootIsUnknown() {
     final UInt64 slot = UInt64.ONE;
     initializeFromGenesis();
     final Bytes32 unknownRoot = dataStructureUtil.randomBytes32();
@@ -233,6 +237,67 @@ class InclusionListManagerTest {
                 manager.getInclusionLists(
                     preHezeSlot, dependentRoot, requestedPositions(preHezeSlot, 0))))
         .isEmpty();
+  }
+
+  @Test
+  void getInclusionLists_shouldNotRetrieveStateWhenNoListsAreHeldForSlotAndRoot() {
+    final UInt64 slot = UInt64.ONE;
+    final SignedBlockAndState genesis = initializeFromGenesis();
+    final RecentChainData spiedRecentChainData = spy(recentChainData);
+    final InclusionListManager manager = managerWith(spiedRecentChainData);
+    // A list for the slot under another dependent root doesn't count
+    manager.add(createSignedInclusionList(slot, UInt64.ZERO, dataStructureUtil.randomBytes32()));
+
+    assertThat(
+            safeJoin(
+                manager.getInclusionLists(slot, genesis.getRoot(), requestedPositions(slot, 0))))
+        .isEmpty();
+    // Nothing at all held for this slot
+    assertThat(
+            safeJoin(
+                manager.getInclusionLists(
+                    UInt64.ZERO, genesis.getRoot(), requestedPositions(UInt64.ZERO, 0))))
+        .isEmpty();
+    verify(spiedRecentChainData, never()).retrieveBlockState(any(SlotAndBlockRoot.class));
+  }
+
+  @Test
+  void getInclusionLists_shouldNotRetrieveStateForSlotsBeyondNextSlot() {
+    final SignedBlockAndState genesis = initializeFromGenesis();
+    final UInt64 farFutureSlot = UInt64.valueOf(1_000);
+    final RecentChainData spiedRecentChainData = spy(recentChainData);
+    final InclusionListManager manager = managerWith(spiedRecentChainData);
+    manager.add(createSignedInclusionList(farFutureSlot, UInt64.ZERO, genesis.getRoot()));
+
+    assertThat(
+            safeJoin(
+                manager.getInclusionLists(
+                    farFutureSlot, genesis.getRoot(), requestedPositions(farFutureSlot, 0))))
+        .isEmpty();
+    verify(spiedRecentChainData, never()).retrieveBlockState(any(SlotAndBlockRoot.class));
+  }
+
+  @Test
+  void getInclusionLists_shouldReturnEmptyWhenDependentBlockIsAfterSlot() {
+    final UInt64 slot = UInt64.ONE;
+    initializeFromGenesis();
+    final Bytes32 laterBlockRoot = dataStructureUtil.randomBytes32();
+    final RecentChainData spiedRecentChainData = spy(recentChainData);
+    doReturn(Optional.of(UInt64.valueOf(2)))
+        .when(spiedRecentChainData)
+        .getSlotForBlockRoot(laterBlockRoot);
+    final InclusionListManager manager = managerWith(spiedRecentChainData);
+    manager.add(createSignedInclusionList(slot, UInt64.ZERO, laterBlockRoot));
+
+    assertThat(
+            safeJoin(manager.getInclusionLists(slot, laterBlockRoot, requestedPositions(slot, 0))))
+        .isEmpty();
+    verify(spiedRecentChainData, never()).retrieveBlockState(any(SlotAndBlockRoot.class));
+  }
+
+  private InclusionListManager managerWith(final RecentChainData chainData) {
+    return new InclusionListManager(
+        signedInclusionListValidator, forkChoice, spec, chainData, inclusionListStore);
   }
 
   private SignedBlockAndState initializeFromGenesis() {

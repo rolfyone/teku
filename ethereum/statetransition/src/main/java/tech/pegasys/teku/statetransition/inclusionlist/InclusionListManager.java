@@ -162,7 +162,13 @@ public class InclusionListManager implements SlotEventsChannel {
       final UInt64 slot, final Bytes32 dependentRoot, final SszBitvector committeeIndices) {
     final Optional<InclusionListUtil> maybeInclusionListUtil =
         spec.atSlot(slot).getInclusionListUtil();
-    if (maybeInclusionListUtil.isEmpty()) {
+    // The slot and dependent root come from the peer, so only regenerate the dependent state when
+    // there is something to serve: lists are only retained for recent slots, which bounds the
+    // slot processing a request can cause.
+    if (maybeInclusionListUtil.isEmpty()
+        || !isServableSlot(slot)
+        || !hasInclusionListsFor(slot, dependentRoot)
+        || !isDependentBlockAtOrBefore(dependentRoot, slot)) {
       return SafeFuture.completedFuture(List.of());
     }
     return recentChainData
@@ -184,6 +190,33 @@ public class InclusionListManager implements SlotEventsChannel {
                           return getInclusionLists(slot, dependentRoot, requestedValidatorIndices);
                         })
                     .orElse(List.of()));
+  }
+
+  /** Inclusion lists are only valid on gossip up to one slot ahead, within clock disparity. */
+  private boolean isServableSlot(final UInt64 slot) {
+    return recentChainData
+        .getCurrentSlot()
+        .map(currentSlot -> slot.isLessThanOrEqualTo(currentSlot.increment()))
+        .orElse(false);
+  }
+
+  private boolean hasInclusionListsFor(final UInt64 slot, final Bytes32 dependentRoot) {
+    final Map<UInt64, List<SignedInclusionList>> inclusionListsForSlot =
+        slotToInclusionListsByValidatorIndex.get(slot);
+    return inclusionListsForSlot != null
+        && inclusionListsForSlot.values().stream()
+            .flatMap(List::stream)
+            .anyMatch(
+                signedInclusionList ->
+                    signedInclusionList.getMessage().getDependentRoot().equals(dependentRoot));
+  }
+
+  /** A block after {@code slot} can't be the dependent root for inclusion lists at that slot. */
+  private boolean isDependentBlockAtOrBefore(final Bytes32 dependentRoot, final UInt64 slot) {
+    return recentChainData
+        .getSlotForBlockRoot(dependentRoot)
+        .map(dependentSlot -> dependentSlot.isLessThanOrEqualTo(slot))
+        .orElse(false);
   }
 
   private List<SignedInclusionList> getInclusionLists(
