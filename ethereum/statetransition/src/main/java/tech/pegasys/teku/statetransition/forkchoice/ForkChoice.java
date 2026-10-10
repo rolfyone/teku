@@ -1206,7 +1206,7 @@ public class ForkChoice implements ForkChoiceUpdatedResultSubscriber {
     transitionValidatedStatus
         .thenCompose(
             result ->
-                recordPayloadInclusionListSatisfaction(node.blockRoot(), payloadResult, result)
+                recordPayloadInclusionListSatisfaction(node, payloadResult, result)
                     .thenApply(__ -> result))
         .finishAsync(
             result -> {
@@ -1268,18 +1268,36 @@ public class ForkChoice implements ForkChoiceUpdatedResultSubscriber {
             forkChoiceExecutor);
   }
 
+  /**
+   * Records inclusion list satisfaction from a forkchoiceUpdated response. Per the Heze optimistic
+   * sync spec this only applies when the head's own payload transitions from NOT_VALIDATED to
+   * VALID: the response is about the block's payload only for a FULL node (an EMPTY node's
+   * execution head is its parent's payload), and a payload that was already VALID had its
+   * satisfaction recorded when it was imported, which must not change.
+   */
   private SafeFuture<Void> recordPayloadInclusionListSatisfaction(
-      final Bytes32 blockRoot,
+      final ForkChoiceNode node,
       final PayloadStatus payloadStatus,
       final PayloadValidationResult validationResult) {
     if (!validationResult.getStatus().hasValidStatus()
-        || !isPayloadInclusionListUnsatisfied(payloadStatus)) {
+        || !isPayloadInclusionListUnsatisfied(payloadStatus)
+        || node.payloadStatus() != ForkChoicePayloadStatus.PAYLOAD_STATUS_FULL
+        || !isOptimistic(node)) {
       return SafeFuture.COMPLETE;
     }
 
     final StoreTransaction transaction = recentChainData.startStoreTransaction();
-    recordPayloadInclusionListSatisfaction(transaction, blockRoot, payloadStatus);
+    recordPayloadInclusionListSatisfaction(transaction, node.blockRoot(), payloadStatus);
     return transaction.commit();
+  }
+
+  /** Safe to call off the fork choice thread, as the read-only strategy takes its own lock. */
+  private boolean isOptimistic(final ForkChoiceNode node) {
+    return recentChainData
+        .getForkChoiceStrategy()
+        .flatMap(forkChoiceStrategy -> forkChoiceStrategy.getNodeData(node))
+        .map(ProtoNodeData::isOptimistic)
+        .orElse(false);
   }
 
   private void recordPayloadInclusionListSatisfaction(

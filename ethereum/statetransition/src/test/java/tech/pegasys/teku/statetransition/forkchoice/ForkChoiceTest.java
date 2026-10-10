@@ -1963,6 +1963,8 @@ class ForkChoiceTest {
 
     final SignedBlockAndState targetBlock = chainBuilder.generateBlockAtSlot(ONE);
     importBlock(targetBlock);
+    // The payload stays optimistic until the forkchoiceUpdated response below validates it
+    setForkChoiceNotifierForkChoiceUpdatedResult(PayloadStatus.SYNCING);
     executionLayer.setPayloadStatus(PayloadStatus.ACCEPTED);
     importPayload(targetBlock);
 
@@ -1992,6 +1994,76 @@ class ForkChoiceTest {
     processHead(nextSlot);
     assertThat(recentChainData.getChainHead().orElseThrow().getForkChoiceNode())
         .isEqualTo(ForkChoiceNode.createEmpty(targetBlock.getRoot()));
+  }
+
+  @Test
+  void onForkChoiceUpdatedResult_shouldNotChangeSatisfactionOfAlreadyValidPayload() {
+    setupWithSpec(
+        TestSpecFactory.createMinimalHeze(
+            builder -> builder.blsSignatureVerifier(BLSSignatureVerifier.NOOP)));
+    assertThat(forkChoice.applyGenesisExecutionPayloadForGloas()).isCompleted();
+
+    final SignedBlockAndState targetBlock = chainBuilder.generateBlockAtSlot(ONE);
+    importBlock(targetBlock);
+    // The payload is validated, and satisfies the inclusion lists, when it's imported
+    executionLayer.setPayloadStatus(
+        PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(true)));
+    importPayload(targetBlock);
+    assertThat(recentChainData.getStore().satisfiesInclusionList(targetBlock.getRoot())).isTrue();
+
+    notifyForkChoiceUpdatedResult(
+        ForkChoiceNode.createFull(targetBlock.getRoot()),
+        targetBlock.getSlot(),
+        PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(false)));
+
+    assertThat(recentChainData.getStore().satisfiesInclusionList(targetBlock.getRoot())).isTrue();
+  }
+
+  @Test
+  void onForkChoiceUpdatedResult_shouldNotRecordSatisfactionFromEmptyNode() {
+    setupWithSpec(
+        TestSpecFactory.createMinimalHeze(
+            builder -> builder.blsSignatureVerifier(BLSSignatureVerifier.NOOP)));
+    assertThat(forkChoice.applyGenesisExecutionPayloadForGloas()).isCompleted();
+    // Payloads stay optimistic, so the EMPTY node below is optimistic too
+    setForkChoiceNotifierForkChoiceUpdatedResult(PayloadStatus.SYNCING);
+    executionLayer.setPayloadStatus(PayloadStatus.ACCEPTED);
+
+    final SignedBlockAndState parentBlock = chainBuilder.generateBlockAtSlot(ONE);
+    importBlock(parentBlock);
+    importPayload(parentBlock);
+    final SignedBlockAndState targetBlock = chainBuilder.generateBlockAtSlot(UInt64.valueOf(2));
+    importBlock(targetBlock);
+    final ForkChoiceNode emptyNode = ForkChoiceNode.createEmpty(targetBlock.getRoot());
+    assertThat(
+            recentChainData
+                .getStore()
+                .getForkChoiceStrategy()
+                .getNodeData(emptyNode)
+                .orElseThrow()
+                .isOptimistic())
+        .isTrue();
+
+    // An EMPTY node's execution head is its parent's payload, so the response says nothing about
+    // whether this block's payload satisfies the inclusion lists
+    notifyForkChoiceUpdatedResult(
+        emptyNode,
+        targetBlock.getSlot(),
+        PayloadStatus.valid(Optional.empty(), Optional.empty(), Optional.of(false)));
+
+    assertThat(recentChainData.getStore().satisfiesInclusionList(targetBlock.getRoot())).isTrue();
+  }
+
+  private void notifyForkChoiceUpdatedResult(
+      final ForkChoiceNode headNode, final UInt64 headSlot, final PayloadStatus payloadStatus) {
+    forkChoice.onForkChoiceUpdatedResult(
+        new ForkChoiceUpdatedResultNotification(
+            new ForkChoiceState(
+                headNode, headSlot, UInt64.ZERO, Bytes32.ZERO, Bytes32.ZERO, Bytes32.ZERO, false),
+            Optional.empty(),
+            false,
+            SafeFuture.completedFuture(
+                new ForkChoiceUpdatedResult(payloadStatus, Optional.empty()))));
   }
 
   @Test
