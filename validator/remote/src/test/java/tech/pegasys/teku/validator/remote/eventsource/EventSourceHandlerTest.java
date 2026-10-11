@@ -143,6 +143,66 @@ class EventSourceHandlerTest {
   }
 
   @Test
+  void onMessage_shouldTriggerInclusionListCreationOnHeadEventFromHeze() throws Exception {
+    final Spec hezeSpec = TestSpecFactory.createMinimalHeze();
+    final EventSourceHandler hezeHandler =
+        new EventSourceHandler(validatorTimingChannel, metricsSystem, true, hezeSpec);
+    final UInt64 slot = UInt64.valueOf(134);
+    final Bytes32 blockRoot = dataStructureUtil.randomBytes32();
+    final Bytes32 previousDutyDependentRoot = dataStructureUtil.randomBytes32();
+    final Bytes32 currentDutyDependentRoot = dataStructureUtil.randomBytes32();
+    final HeadV2Event event =
+        new HeadV2Event(
+            new Data(
+                slot,
+                blockRoot,
+                dataStructureUtil.randomBytes32(),
+                false,
+                previousDutyDependentRoot,
+                currentDutyDependentRoot,
+                false,
+                PayloadStatus.PAYLOAD_STATUS_PENDING.toString()));
+    hezeHandler.onMessage(
+        EventType.head_v2.name(),
+        new MessageEvent(JsonUtil.serialize(event, HeadV2Event.TYPE_DEFINITION)));
+
+    verify(validatorTimingChannel)
+        .onHeadUpdate(
+            eq(slot), eq(previousDutyDependentRoot), eq(currentDutyDependentRoot), eq(blockRoot));
+    verify(validatorTimingChannel).onAttestationCreationDue(slot);
+    verify(validatorTimingChannel).onInclusionListCreationDue(slot);
+    verifyNoMoreInteractions(validatorTimingChannel);
+  }
+
+  @Test
+  void onMessage_shouldNotTriggerEarlyDutiesOnHeadEventWhenDisabled() throws Exception {
+    final EventSourceHandler lateHandler =
+        new EventSourceHandler(
+            validatorTimingChannel, metricsSystem, false, TestSpecFactory.createMinimalHeze());
+    final UInt64 slot = UInt64.valueOf(134);
+    final Bytes32 blockRoot = dataStructureUtil.randomBytes32();
+    final Bytes32 previousDutyDependentRoot = dataStructureUtil.randomBytes32();
+    final Bytes32 currentDutyDependentRoot = dataStructureUtil.randomBytes32();
+    final HeadEvent event =
+        new HeadEvent(
+            slot,
+            blockRoot,
+            dataStructureUtil.randomBytes32(),
+            false,
+            previousDutyDependentRoot,
+            currentDutyDependentRoot,
+            false);
+    lateHandler.onMessage(
+        EventType.head.name(),
+        new MessageEvent(JsonUtil.serialize(event, HeadEvent.TYPE_DEFINITION)));
+
+    verify(validatorTimingChannel)
+        .onHeadUpdate(
+            eq(slot), eq(previousDutyDependentRoot), eq(currentDutyDependentRoot), eq(blockRoot));
+    verifyNoMoreInteractions(validatorTimingChannel);
+  }
+
+  @Test
   void onMessage_shouldHandleAttesterSlashingEvent() throws Exception {
     final IndexedAttestation indexedAttestation1 = dataStructureUtil.randomIndexedAttestation();
     final IndexedAttestation indexedAttestation2 = dataStructureUtil.randomIndexedAttestation();

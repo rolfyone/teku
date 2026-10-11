@@ -40,9 +40,15 @@ public class HezeTimeBasedEventAdapter extends GloasTimeBasedEventAdapter {
       final UInt64 nextSlotStartTimeMillis, final Optional<UInt64> expirationTimeMillis) {
     super.scheduleDuties(nextSlotStartTimeMillis, expirationTimeMillis);
 
+    // The inclusion list must be published by the inclusion list due time, built on the current
+    // slot's block if it's head. A timely block triggers creation through the head event, so this
+    // is the fallback for a missing or late block. It runs at the attestation due time, as later
+    // blocks aren't timely, and leaves time to publish before the inclusion list due time.
     scheduleAll(
         nextSlotStartTimeMillis,
         expirationTimeMillis,
-        new ScheduledEvent(0, this::onInclusionListCreationDue));
+        new ScheduledEvent(
+            specVersion.getForkChoiceUtil().getAttestationDueMillis(),
+            this::onInclusionListCreationDue));
   }
 }
