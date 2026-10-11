@@ -80,7 +80,7 @@ class SlotEventVerifierTestUtil {
     if (milestone.isGreaterThanOrEqualTo(SpecMilestone.HEZE)) {
       addExpected(
           expectedByOffset,
-          0,
+          spec.getAttestationDueMillis(slot),
           () -> verify(validatorTimingChannel, times(1)).onInclusionListCreationDue(slot));
     }
 

@@ -29,7 +29,9 @@ import tech.pegasys.teku.api.response.EventType;
 import tech.pegasys.teku.infrastructure.json.JsonUtil;
 import tech.pegasys.teku.infrastructure.json.types.DeserializableTypeDefinition;
 import tech.pegasys.teku.infrastructure.metrics.TekuMetricCategory;
+import tech.pegasys.teku.infrastructure.unsigned.UInt64;
 import tech.pegasys.teku.spec.Spec;
+import tech.pegasys.teku.spec.SpecMilestone;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.validator.api.ValidatorTimingChannel;
@@ -115,9 +117,7 @@ class EventSourceHandler implements BackgroundEventHandler {
         headEvent.previousDutyDependentRoot(),
         headEvent.currentDutyDependentRoot(),
         headEvent.block());
-    if (generateEarlyAttestations) {
-      validatorTimingChannel.onAttestationCreationDue(headEvent.slot());
-    }
+    onEarlyDutiesDue(headEvent.slot());
   }
 
   private void handleHeadV2Event(final String data) throws JsonProcessingException {
@@ -127,8 +127,17 @@ class EventSourceHandler implements BackgroundEventHandler {
         headEvent.data().currentEpochDependentRoot(),
         headEvent.data().nextEpochDependentRoot(),
         headEvent.data().block());
-    if (generateEarlyAttestations) {
-      validatorTimingChannel.onAttestationCreationDue(headEvent.data().slot());
+    onEarlyDutiesDue(headEvent.data().slot());
+  }
+
+  private void onEarlyDutiesDue(final UInt64 slot) {
+    if (!generateEarlyAttestations) {
+      return;
+    }
+    validatorTimingChannel.onAttestationCreationDue(slot);
+    // Build the inclusion list on the slot's block as soon as it's head
+    if (spec.atSlot(slot).getMilestone().isGreaterThanOrEqualTo(SpecMilestone.HEZE)) {
+      validatorTimingChannel.onInclusionListCreationDue(slot);
     }
   }
 

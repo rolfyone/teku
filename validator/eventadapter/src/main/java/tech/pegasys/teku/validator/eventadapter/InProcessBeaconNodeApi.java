@@ -65,7 +65,8 @@ public class InProcessBeaconNodeApi implements BeaconNodeApi {
             eventChannels,
             validatorConfig.generateEarlyAttestations(),
             timeBasedEventAdapter,
-            validatorTimingChannel);
+            validatorTimingChannel,
+            spec);
     return new InProcessBeaconNodeApi(validatorApiChannel, beaconChainEventAdapter);
   }
 
