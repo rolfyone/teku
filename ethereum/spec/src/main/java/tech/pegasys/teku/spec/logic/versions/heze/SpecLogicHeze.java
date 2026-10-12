@@ -44,7 +44,6 @@ import tech.pegasys.teku.spec.logic.versions.gloas.helpers.BeaconStateMutatorsGl
 import tech.pegasys.teku.spec.logic.versions.gloas.helpers.PredicatesGloas;
 import tech.pegasys.teku.spec.logic.versions.gloas.operations.OperationSignatureVerifierGloas;
 import tech.pegasys.teku.spec.logic.versions.gloas.operations.validation.AttestationDataValidatorGloas;
-import tech.pegasys.teku.spec.logic.versions.gloas.statetransition.epoch.EpochProcessorGloas;
 import tech.pegasys.teku.spec.logic.versions.gloas.util.AttestationUtilGloas;
 import tech.pegasys.teku.spec.logic.versions.gloas.util.DataColumnSidecarUtilGloas;
 import tech.pegasys.teku.spec.logic.versions.gloas.util.ProposerPreferencesUtilGloas;
@@ -54,6 +53,7 @@ import tech.pegasys.teku.spec.logic.versions.heze.block.BlockProcessorHeze;
 import tech.pegasys.teku.spec.logic.versions.heze.forktransition.HezeStateUpgrade;
 import tech.pegasys.teku.spec.logic.versions.heze.helpers.BeaconStateAccessorsHeze;
 import tech.pegasys.teku.spec.logic.versions.heze.helpers.MiscHelpersHeze;
+import tech.pegasys.teku.spec.logic.versions.heze.statetransition.epoch.EpochProcessorHeze;
 import tech.pegasys.teku.spec.logic.versions.heze.util.ForkChoiceUtilHeze;
 import tech.pegasys.teku.spec.logic.versions.heze.util.InclusionListUtil;
 import tech.pegasys.teku.spec.logic.versions.heze.util.ValidatorsUtilHeze;
@@ -83,7 +83,7 @@ public class SpecLogicHeze extends AbstractSpecLogic {
       final AttestationUtilGloas attestationUtil,
       final OperationValidator operationValidator,
       final ValidatorStatusFactoryAltair validatorStatusFactory,
-      final EpochProcessorGloas epochProcessor,
+      final EpochProcessorHeze epochProcessor,
       final WithdrawalsHelpersGloas withdrawalsHelpers,
       final ExecutionRequestsProcessorGloas executionRequestsProcessor,
       final ExecutionRequestsDataCodec executionRequestsDataCodec,
@@ -175,8 +175,8 @@ public class SpecLogicHeze extends AbstractSpecLogic {
             predicates,
             miscHelpers,
             beaconStateAccessors);
-    final EpochProcessorGloas epochProcessor =
-        new EpochProcessorGloas(
+    final EpochProcessorHeze epochProcessor =
+        new EpochProcessorHeze(
             config,
             miscHelpers,
             beaconStateAccessors,
