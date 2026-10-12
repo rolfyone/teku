@@ -48,6 +48,13 @@ class BeaconBlockBodyHezeTest {
   }
 
   @Test
+  void builder_shouldNotSupportEth1DataAndDeposits() {
+    assertThat(spec.getGenesisSchemaDefinitions().createBeaconBlockBodyBuilder())
+        .isInstanceOf(BeaconBlockBodyBuilderHeze.class)
+        .matches(builder -> !builder.supportsEth1DataAndDeposits());
+  }
+
+  @Test
   void builder_shouldNotRequireRemovedFields() {
     final BeaconBlockBody template = dataStructureUtil.randomBeaconBlockBody();
 

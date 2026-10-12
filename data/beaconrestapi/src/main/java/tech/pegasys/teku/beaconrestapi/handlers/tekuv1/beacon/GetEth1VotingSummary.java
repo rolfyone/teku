@@ -14,6 +14,7 @@
 package tech.pegasys.teku.beaconrestapi.handlers.tekuv1.beacon;
 
 import static tech.pegasys.teku.beaconrestapi.BeaconRestApiTypes.PARAMETER_STATE_ID;
+import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_BAD_REQUEST;
 import static tech.pegasys.teku.infrastructure.http.HttpStatusCodes.SC_OK;
 import static tech.pegasys.teku.infrastructure.http.RestApiConstants.TAG_TEKU;
 import static tech.pegasys.teku.infrastructure.json.types.SerializableTypeDefinition.listOf;
@@ -32,6 +33,7 @@ import tech.pegasys.teku.infrastructure.restapi.endpoints.EndpointMetadata;
 import tech.pegasys.teku.infrastructure.restapi.endpoints.RestApiEndpoint;
 import tech.pegasys.teku.infrastructure.restapi.endpoints.RestApiRequest;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
+import tech.pegasys.teku.spec.SpecMilestone;
 import tech.pegasys.teku.spec.datastructures.blocks.Eth1Data;
 import tech.pegasys.teku.validator.coordinator.Eth1DataProvider;
 import tech.pegasys.teku.validator.coordinator.Eth1DataProvider.VotingPeriodInfo;
@@ -104,6 +106,12 @@ public class GetEth1VotingSummary extends RestApiEndpoint {
                 maybeStateAndMetadata -> {
                   if (maybeStateAndMetadata.isEmpty()) {
                     return AsyncApiResponse.respondNotFound();
+                  } else if (maybeStateAndMetadata
+                      .get()
+                      .getMilestone()
+                      .isGreaterThanOrEqualTo(SpecMilestone.HEZE)) {
+                    return AsyncApiResponse.respondWithError(
+                        SC_BAD_REQUEST, GetEth1Data.ETH1_DATA_REMOVED_MESSAGE);
                   } else {
                     List<Pair<Eth1Data, UInt64>> eth1DataVotes =
                         eth1DataProvider.getEth1DataVotes(maybeStateAndMetadata.get());
