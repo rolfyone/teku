@@ -49,6 +49,11 @@ public interface BeaconBlockBodyBuilder {
 
   BeaconBlockBodyBuilder voluntaryExits(SszList<SignedVoluntaryExit> voluntaryExits);
 
+  /** {@code eth1_data} and {@code deposits} were removed in Heze (EIP-8015). */
+  default boolean supportsEth1DataAndDeposits() {
+    return true;
+  }
+
   default Boolean supportsSyncAggregate() {
     return false;
   }

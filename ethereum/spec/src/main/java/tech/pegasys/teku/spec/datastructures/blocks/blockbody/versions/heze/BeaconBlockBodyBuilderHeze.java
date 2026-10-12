@@ -28,6 +28,11 @@ public class BeaconBlockBodyBuilderHeze extends BeaconBlockBodyBuilderGloas {
   }
 
   @Override
+  public boolean supportsEth1DataAndDeposits() {
+    return false;
+  }
+
+  @Override
   protected void validate() {
     checkNotNull(randaoReveal, "randaoReveal must be specified");
     checkNotNull(graffiti, "graffiti must be specified");
