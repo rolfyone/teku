@@ -667,13 +667,26 @@ public class ForkChoiceNotifierImpl implements ForkChoiceNotifier {
       // failing block production with it.
       productionForkChoiceUpdateData
           .getExecutionPayloadContext()
+          // a failed fcU is as unusable as one without a payloadId: let the retry below handle it
+          .exceptionally(
+              error -> {
+                LOG.warn(
+                    "Reused forkChoiceUpdated for block production at slot {} failed",
+                    requestedBlockProductionSlot,
+                    error);
+                return Optional.empty();
+              })
           .thenComposeAsync(
               maybeExecutionPayloadContext ->
                   retryPinnedBlockProductionIfPayloadIdIsMissing(
                       preparation, maybeExecutionPayloadContext),
               eventThread)
           .propagateTo(preparation.executionPayloadContext());
-      sendForkChoiceUpdated(productionForkChoiceUpdateData);
+      // A result already known can only be resent as a duplicate whose outcome is dropped: either
+      // it is usable as is, or the retry above has already sent a fresh fcU.
+      if (!productionForkChoiceUpdateData.getExecutionPayloadContext().isDone()) {
+        sendForkChoiceUpdated(productionForkChoiceUpdateData);
+      }
     } else if (matchingPendingPreparation.isPresent()) {
       LOG.debug(
           "Pinned block production for slot {} is waiting for inclusion list payload attributes",
