@@ -44,6 +44,8 @@ import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecution
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedProposerPreferences;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.versions.heze.SignedInclusionList;
+import tech.pegasys.teku.spec.datastructures.lightclient.LightClientFinalityUpdate;
+import tech.pegasys.teku.spec.datastructures.lightclient.LightClientOptimisticUpdate;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -297,6 +299,22 @@ public class GossipForkManager {
         signedInclusionList,
         "attestation",
         GossipForkSubscriptions::publishSignedInclusionList);
+  }
+
+  public void publishLightClientFinalityUpdate(final LightClientFinalityUpdate message) {
+    publishMessage(
+        message.getAttestedHeader().getBeacon().getSlot(),
+        message,
+        "light client finality update",
+        GossipForkSubscriptions::publishLightClientFinalityUpdate);
+  }
+
+  public void publishLightClientOptimisticUpdate(final LightClientOptimisticUpdate message) {
+    publishMessage(
+        message.getAttestedHeader().getBeacon().getSlot(),
+        message,
+        "light client optimistic update",
+        GossipForkSubscriptions::publishLightClientOptimisticUpdate);
   }
 
   private synchronized <T> void publishMessage(

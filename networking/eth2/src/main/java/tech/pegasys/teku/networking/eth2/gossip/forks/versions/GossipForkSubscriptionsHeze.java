@@ -13,6 +13,7 @@
 
 package tech.pegasys.teku.networking.eth2.gossip.forks.versions;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.hyperledger.besu.plugin.services.MetricsSystem;
 import tech.pegasys.teku.infrastructure.async.AsyncRunner;
@@ -32,6 +33,8 @@ import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedExecution
 import tech.pegasys.teku.spec.datastructures.epbs.versions.gloas.SignedProposerPreferences;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionProof;
 import tech.pegasys.teku.spec.datastructures.execution.versions.heze.SignedInclusionList;
+import tech.pegasys.teku.spec.datastructures.lightclient.LightClientFinalityUpdate;
+import tech.pegasys.teku.spec.datastructures.lightclient.LightClientOptimisticUpdate;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.SignedBlsToExecutionChange;
@@ -69,6 +72,10 @@ public class GossipForkSubscriptionsHeze extends GossipForkSubscriptionsGloas {
           signedContributionAndProofOperationProcessor,
       final OperationProcessor<ValidatableSyncCommitteeMessage>
           syncCommitteeMessageOperationProcessor,
+      final Optional<OperationProcessor<LightClientFinalityUpdate>>
+          lightClientFinalityUpdateProcessor,
+      final Optional<OperationProcessor<LightClientOptimisticUpdate>>
+          lightClientOptimisticUpdateProcessor,
       final OperationProcessor<SignedBlsToExecutionChange>
           signedBlsToExecutionChangeOperationProcessor,
       final OperationProcessor<DataColumnSidecar> dataColumnSidecarOperationProcessor,
@@ -100,6 +107,8 @@ public class GossipForkSubscriptionsHeze extends GossipForkSubscriptionsGloas {
         voluntaryExitProcessor,
         signedContributionAndProofOperationProcessor,
         syncCommitteeMessageOperationProcessor,
+        lightClientFinalityUpdateProcessor,
+        lightClientOptimisticUpdateProcessor,
         signedBlsToExecutionChangeOperationProcessor,
         dataColumnSidecarOperationProcessor,
         executionPayloadOperationProcessor,
