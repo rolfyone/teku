@@ -1490,6 +1490,45 @@ class ForkChoiceNotifierTest {
   }
 
   @Test
+  void getPayloadId_shouldRecoverWhenBlockProductionIsRequestedAgainAfterNoPayloadId() {
+    final Bytes8 payloadId = dataStructureUtil.randomBytes8();
+    final ForkChoiceState forkChoiceState = getCurrentForkChoiceState();
+    final BeaconState headState = getHeadState();
+    final Bytes32 blockRoot = recentChainData.getBestBlockRoot().orElseThrow();
+    final UInt64 blockSlot = headState.getSlot().plus(1);
+    final PayloadBuildingAttributes payloadBuildingAttributes =
+        withProposerForSlot(forkChoiceState, headState, blockSlot);
+
+    final SafeFuture<ForkChoiceUpdatedResult> noPayloadIdResponse =
+        SafeFuture.completedFuture(
+            createForkChoiceUpdatedResult(ExecutionPayloadStatus.SYNCING, Optional.empty()));
+    when(executionLayerChannel.engineForkChoiceUpdated(
+            forkChoiceState, Optional.of(payloadBuildingAttributes)))
+        .thenReturn(noPayloadIdResponse)
+        .thenReturn(noPayloadIdResponse)
+        .thenReturn(
+            SafeFuture.completedFuture(
+                createForkChoiceUpdatedResult(
+                    ExecutionPayloadStatus.VALID, Optional.of(payloadId))));
+
+    // first block production attempt fails: neither the reused fcU nor its retry has a payloadId
+    notifyForkChoiceUpdated(forkChoiceState);
+    notifyForkChoiceUpdated(forkChoiceState, Optional.of(blockSlot));
+    assertThatSafeFuture(notifier.getPayloadId(ForkChoiceNode.createBase(blockRoot), blockSlot))
+        .isCompletedExceptionallyWith(IllegalStateException.class)
+        .hasMessageContaining("Unable to obtain an executionPayloadContext");
+
+    // block production is retried for the same parent and slot and must request a new payloadId
+    notifier.onForkChoiceUpdated(forkChoiceState, Optional.of(blockSlot));
+
+    verify(executionLayerChannel, times(3))
+        .engineForkChoiceUpdated(forkChoiceState, Optional.of(payloadBuildingAttributes));
+    assertThatSafeFuture(notifier.getPayloadId(ForkChoiceNode.createBase(blockRoot), blockSlot))
+        .isCompletedWithOptionalContaining(
+            new ExecutionPayloadContext(payloadId, forkChoiceState, payloadBuildingAttributes));
+  }
+
+  @Test
   void getPayloadId_shouldFailAfterHeadAdvancementClearsPinnedBlockProduction() {
     final ForkChoiceState forkChoiceState = getCurrentForkChoiceState();
     final BeaconState headState = getHeadState();
