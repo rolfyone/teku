@@ -105,7 +105,12 @@ public class GenesisGenerator {
     state.setEth1Data(
         new Eth1Data(
             Bytes32.ZERO, UInt64.valueOf(depositDataList.size() + deposits.size()), eth1BlockHash));
-    if (genesisSpec.getMilestone().isGreaterThanOrEqualTo(SpecMilestone.ELECTRA)) {
+    if (genesisSpec.getMilestone().isGreaterThanOrEqualTo(SpecMilestone.FULU)) {
+      // Fulu removed the Eth1 deposit bridge (consensus-specs #4704), so genesis starts deposit
+      // requests right after the genesis deposits
+      MutableBeaconStateElectra.required(state)
+          .setDepositRequestsStartIndex(state.getEth1Data().getDepositCount());
+    } else if (genesisSpec.getMilestone().isGreaterThanOrEqualTo(SpecMilestone.ELECTRA)) {
       MutableBeaconStateElectra.required(state)
           .setDepositRequestsStartIndex(UNSET_DEPOSIT_REQUESTS_START_INDEX);
     }
