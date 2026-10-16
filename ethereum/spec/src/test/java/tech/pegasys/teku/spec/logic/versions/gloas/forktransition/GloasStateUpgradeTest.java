@@ -266,6 +266,9 @@ class GloasStateUpgradeTest {
     final PendingDeposit retainedBuilderDeposit2 =
         pendingDepositWithEmptySignature(
             keyPair.getPublicKey(), randomBuilderWithdrawalCredentials());
+    final PendingDeposit laterValidatorDeposit =
+        pendingDepositWithEmptySignature(
+            keyPair.getPublicKey(), dataStructureUtil.randomEth1WithdrawalCredentials());
 
     final CountingSignatureMiscHelpers miscHelpers = createCountingSignatureMiscHelpers(true);
     final BeaconStateGloas postState =
@@ -278,7 +281,8 @@ class GloasStateUpgradeTest {
                             droppedBuilderDeposit,
                             validValidatorDeposit,
                             retainedBuilderDeposit1,
-                            retainedBuilderDeposit2))));
+                            retainedBuilderDeposit2,
+                            laterValidatorDeposit))));
 
     assertThat(postState.getBuilders().asList()).isEmpty();
     assertThat(postState.getPendingDeposits().asList())
@@ -286,9 +290,11 @@ class GloasStateUpgradeTest {
             invalidValidatorDeposit,
             validValidatorDeposit,
             retainedBuilderDeposit1,
-            retainedBuilderDeposit2);
+            retainedBuilderDeposit2,
+            laterValidatorDeposit);
     // Invalid validator deposit and the dropped builder deposit on the first builder deposit, then
-    // only the valid validator deposit on the next; the invalid one is not re-verified
+    // only the valid validator deposit on the next; the invalid one is not re-verified, and the
+    // later validator deposit for the already pending pubkey is never verified
     assertThat(miscHelpers.getSignatureVerificationCount()).isEqualTo(3);
   }
 
