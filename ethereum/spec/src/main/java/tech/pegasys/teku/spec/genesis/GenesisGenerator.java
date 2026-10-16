@@ -110,7 +110,8 @@ public class GenesisGenerator {
       // requests right after the genesis deposits
       MutableBeaconStateElectra.required(state)
           .setDepositRequestsStartIndex(state.getEth1Data().getDepositCount());
-    } else if (genesisSpec.getMilestone().isGreaterThanOrEqualTo(SpecMilestone.ELECTRA)) {
+    } else if (genesisSpec.getMilestone() == SpecMilestone.ELECTRA) {
+      // Electra genesis leaves the index unset until the first deposit request sets it (EIP-6110)
       MutableBeaconStateElectra.required(state)
           .setDepositRequestsStartIndex(UNSET_DEPOSIT_REQUESTS_START_INDEX);
     }
