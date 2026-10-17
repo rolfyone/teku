@@ -50,6 +50,13 @@ public class ForkChoiceUtilHeze extends ForkChoiceUtilGloas {
         blockProcessor);
   }
 
+  // get_slot_component_duration_ms
+  @Override
+  protected int getSlotComponentDurationMillis(final int basisPoints) {
+    // EIP-8198: deadlines use the Heze slot duration
+    return (basisPoints * specConfig.getSlotDurationMsHeze()) / 10_000;
+  }
+
   @Override
   public Optional<Integer> getInclusionListDueMillis() {
     final SpecConfigHeze configHeze = SpecConfigHeze.required(specConfig);
