@@ -62,6 +62,7 @@ public class SlotProcessor {
   private volatile UInt64 onTickSlotStart;
   private volatile UInt64 onTickSlotAttestation;
   private volatile UInt64 onTickSlotPayloadAttestation;
+  private volatile UInt64 onTickSlotInclusionList;
   private volatile UInt64 onTickEpochPrecompute;
   private volatile UInt64 onTickFutureBlockProductionPreparation;
 
@@ -169,9 +170,10 @@ public class SlotProcessor {
       performanceRecord.ifPresent(TickProcessingPerformance::attestationsDueComplete);
     }
 
-    if (isSlotInclusionListDue(calculatedSlot, currentTimeMillis, nodeSlotStartTimeMillis)) {
+    // the node slot is incremented at the payload attestation deadline, not here
+    if (isSlotInclusionListDue(calculatedSlot, currentTimeMillis, genesisTimeMillis)) {
+      onTickSlotInclusionList = calculatedSlot;
       inclusionListPayloadAttributesUpdater.onInclusionListDue(calculatedSlot);
-      nodeSlot.inc();
     }
 
     if (isSlotPayloadAttestationDue(calculatedSlot, currentTimeMillis, nodeSlotStartTimeMillis)) {
@@ -262,18 +264,21 @@ public class SlotProcessor {
     return isProcessingDueForSlot(calculatedSlot, onTickSlotStart);
   }
 
-  // Inclusion list payload attribute refreshes are due at the inclusion list deadline.
+  // Inclusion list payload attribute refreshes are due at the inclusion list deadline. The due
+  // time is measured from the start of the calculated slot rather than the node slot, so it is
+  // reached once per slot whether it falls before, at or after the payload attestation deadline
+  // where the node slot is incremented.
   boolean isSlotInclusionListDue(
-      final UInt64 calculatedSlot,
-      final UInt64 currentTimeMillis,
-      final UInt64 nodeSlotStartTimeMillis) {
+      final UInt64 calculatedSlot, final UInt64 currentTimeMillis, final UInt64 genesisTimeMillis) {
     final SpecVersion specVersion = spec.atSlot(calculatedSlot);
     if (spec.getForkSchedule().getHighestSupportedMilestone().isLessThan(SpecMilestone.HEZE)
-        || specVersion.getMilestone().isLessThan(SpecMilestone.HEZE)) {
+        || specVersion.getMilestone().isLessThan(SpecMilestone.HEZE)
+        || !isProcessingDueForSlot(calculatedSlot, onTickSlotInclusionList)) {
       return false;
     }
     final UInt64 earliestTimeInMillis =
-        nodeSlotStartTimeMillis.plus(spec.getInclusionListDueMillis(calculatedSlot).orElseThrow());
+        spec.computeTimeMillisAtSlot(calculatedSlot, genesisTimeMillis)
+            .plus(spec.getInclusionListDueMillis(calculatedSlot).orElseThrow());
     return spec.isTimeReached(currentTimeMillis, earliestTimeInMillis);
   }
 
