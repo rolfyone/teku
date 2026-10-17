@@ -18,12 +18,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static tech.pegasys.teku.spec.config.SpecConfig.FAR_FUTURE_EPOCH;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import tech.pegasys.teku.infrastructure.unsigned.UInt64;
+import tech.pegasys.teku.spec.config.SlotDurationScheduleEntry;
 import tech.pegasys.teku.spec.config.SpecConfigAndParent;
 import tech.pegasys.teku.spec.config.SpecConfigGloas;
 import tech.pegasys.teku.spec.config.SpecConfigHeze;
@@ -47,6 +49,8 @@ public class HezeBuilder extends BaseForkBuilder
   // timing, and a slot duration change at the Heze fork is rejected rather than silently ignored.
   private Optional<Integer> slotDurationMsHeze = Optional.empty();
   private Optional<UInt64> minBlobDataRetentionMs = Optional.empty();
+  // Earlier form of EIP-8198 which some network configs still carry
+  private Optional<List<SlotDurationScheduleEntry>> slotDurationSchedule = Optional.empty();
 
   HezeBuilder() {}
 
@@ -62,6 +66,20 @@ public class HezeBuilder extends BaseForkBuilder
     final int resolvedSlotDurationMsHeze = slotDurationMsHeze.orElse(slotDurationMs);
     final UInt64 resolvedMinBlobDataRetentionMs =
         minBlobDataRetentionMs.orElse(dataColumnSidecarsRetentionMs);
+
+    slotDurationSchedule.stream()
+        .flatMap(List::stream)
+        .filter(entry -> !entry.epoch().equals(FAR_FUTURE_EPOCH))
+        .forEach(
+            entry ->
+                checkArgument(
+                    entry.slotDurationMs() == slotDurationMs,
+                    "SLOT_DURATION_SCHEDULE sets SLOT_DURATION_MS to %s at epoch %s, which differs"
+                        + " from SLOT_DURATION_MS (%s): changing the slot duration (EIP-8198) is"
+                        + " not supported yet",
+                    entry.slotDurationMs(),
+                    entry.epoch(),
+                    slotDurationMs));
 
     if (!getForkEpoch().equals(FAR_FUTURE_EPOCH)) {
       checkArgument(
@@ -142,6 +160,13 @@ public class HezeBuilder extends BaseForkBuilder
   public HezeBuilder minBlobDataRetentionMs(final UInt64 minBlobDataRetentionMs) {
     checkNotNull(minBlobDataRetentionMs);
     this.minBlobDataRetentionMs = Optional.of(minBlobDataRetentionMs);
+    return this;
+  }
+
+  public HezeBuilder slotDurationSchedule(
+      final List<SlotDurationScheduleEntry> slotDurationSchedule) {
+    checkNotNull(slotDurationSchedule);
+    this.slotDurationSchedule = Optional.of(slotDurationSchedule);
     return this;
   }
 

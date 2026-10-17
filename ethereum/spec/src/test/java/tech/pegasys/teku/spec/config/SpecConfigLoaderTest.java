@@ -138,6 +138,96 @@ public class SpecConfigLoaderTest {
   }
 
   /** Copies the bundled mainnet config, dropping the (single line) entry starting with the key. */
+  @Test
+  public void shouldAcceptSlotDurationScheduleWithoutDurationChange(@TempDir final Path tempDir)
+      throws Exception {
+    final Path configFile =
+        writeMainnetConfigWith(
+            tempDir,
+            """
+
+            HEZE_FORK_EPOCH: 5
+            SLOT_DURATION_SCHEDULE:
+              - EPOCH: 0
+                SLOT_DURATION_MS: 12000
+            """);
+
+    final SpecConfig config = SpecConfigLoader.loadConfigStrict(configFile.toString()).specConfig();
+
+    assertThat(config.getHezeForkEpoch()).isEqualTo(UInt64.valueOf(5));
+    assertThat(config.getSlotDurationMillis()).isEqualTo(12000);
+  }
+
+  @Test
+  public void shouldRejectSlotDurationScheduleWithDurationChange(@TempDir final Path tempDir)
+      throws Exception {
+    final Path configFile =
+        writeMainnetConfigWith(
+            tempDir,
+            """
+
+            HEZE_FORK_EPOCH: 5
+            SLOT_DURATION_SCHEDULE:
+              - EPOCH: 0
+                SLOT_DURATION_MS: 12000
+              - EPOCH: 5
+                SLOT_DURATION_MS: 10000
+            """);
+
+    assertThatThrownBy(() -> SpecConfigLoader.loadConfigStrict(configFile.toString()))
+        .hasStackTraceContaining(
+            "SLOT_DURATION_SCHEDULE sets SLOT_DURATION_MS to 10000 at epoch 5, which differs from"
+                + " SLOT_DURATION_MS (12000)");
+  }
+
+  @Test
+  public void shouldIgnoreUnscheduledSlotDurationScheduleEntry(@TempDir final Path tempDir)
+      throws Exception {
+    final Path configFile =
+        writeMainnetConfigWith(
+            tempDir,
+            """
+
+            HEZE_FORK_EPOCH: 18446744073709551615
+            SLOT_DURATION_SCHEDULE:
+              - EPOCH: 0
+                SLOT_DURATION_MS: 12000
+              - EPOCH: 18446744073709551615
+                SLOT_DURATION_MS: 10000
+            """);
+
+    final SpecConfig config = SpecConfigLoader.loadConfigStrict(configFile.toString()).specConfig();
+
+    assertThat(config.getSlotDurationMillis()).isEqualTo(12000);
+  }
+
+  @Test
+  public void shouldRejectMalformedSlotDurationSchedule(@TempDir final Path tempDir)
+      throws Exception {
+    final Path configFile =
+        writeMainnetConfigWith(
+            tempDir,
+            """
+
+            HEZE_FORK_EPOCH: 18446744073709551615
+            SLOT_DURATION_SCHEDULE:
+              - EPOCH: 0
+            """);
+
+    assertThatThrownBy(() -> SpecConfigLoader.loadConfigStrict(configFile.toString()))
+        .hasStackTraceContaining("Map does not look like a slot duration schedule");
+  }
+
+  private Path writeMainnetConfigWith(final Path tempDir, final String extraConfig)
+      throws IOException {
+    final Path configFile = writeMainnetConfigWithout(tempDir, "HEZE_FORK_EPOCH:");
+    try (final FileWriter writer =
+        new FileWriter(configFile.toFile(), StandardCharsets.UTF_8, true)) {
+      writer.write(extraConfig);
+    }
+    return configFile;
+  }
+
   private Path writeMainnetConfigWithout(final Path tempDir, final String key) throws IOException {
     final Path configFile = tempDir.resolve("config.yaml");
     try (final InputStream inputStream = getMainnetConfigAsStream()) {

@@ -120,6 +120,7 @@ public class SpecConfigReader {
       ImmutableMap.<String, Function<Object, ?>>builder()
           .put("BLOB_SCHEDULE", this::blobScheduleFromList)
           .put("GAS_LIMIT_SCHEDULE", this::gasLimitScheduleFromList)
+          .put("SLOT_DURATION_SCHEDULE", this::slotDurationScheduleFromList)
           .build();
 
   final SpecConfigBuilder configBuilder = SpecConfig.builder();
@@ -324,6 +325,29 @@ public class SpecConfigReader {
       }
     }
     return gasLimitSchedule;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Object slotDurationScheduleFromList(final Object o) {
+    final List<SlotDurationScheduleEntry> slotDurationSchedule = new ArrayList<>();
+    final List<?> schedule = (List<?>) o;
+    for (Object entry : schedule) {
+      if (entry instanceof Map) {
+        final Map<String, Object> data = (Map<String, Object>) entry;
+        if (!data.containsKey("EPOCH")
+            || !data.containsKey("SLOT_DURATION_MS")
+            || data.size() != 2) {
+          throw new IllegalArgumentException("Map does not look like a slot duration schedule");
+        }
+        slotDurationSchedule.add(
+            new SlotDurationScheduleEntry(
+                UInt64.valueOf(String.valueOf(data.get("EPOCH"))),
+                Integer.parseInt(String.valueOf(data.get("SLOT_DURATION_MS")))));
+      } else {
+        throw new IllegalArgumentException("Could not parse entry slot duration schedule");
+      }
+    }
+    return slotDurationSchedule;
   }
 
   private Stream<Method> streamConfigSetters(final Class<?> builderClass) {
