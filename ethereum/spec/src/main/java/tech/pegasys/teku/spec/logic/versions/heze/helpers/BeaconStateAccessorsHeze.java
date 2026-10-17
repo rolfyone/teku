@@ -14,7 +14,6 @@
 package tech.pegasys.teku.spec.logic.versions.heze.helpers;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static tech.pegasys.teku.spec.config.SpecConfig.GENESIS_EPOCH;
 import static tech.pegasys.teku.spec.logic.common.helpers.MathHelpers.integerSquareRoot;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -145,15 +144,19 @@ public class BeaconStateAccessorsHeze extends BeaconStateAccessorsGloas {
     return miscHelpers.getSlotDurationMillis(epoch) != getBaseSlotDurationMillis();
   }
 
-  /** EIP-8198: {@code value * get_slot_duration_ms(epoch) // get_slot_duration_ms(GENESIS)}. */
+  /** EIP-8198: {@code value * get_slot_duration_ms(epoch) // SLOT_DURATION_MS}. */
   public UInt64 scaleBySlotDuration(final UInt64 value, final UInt64 epoch) {
     return value
         .times(miscHelpers.getSlotDurationMillis(epoch))
         .dividedBy(getBaseSlotDurationMillis());
   }
 
-  /** EIP-8198: the slot duration that per-epoch rewards and churn are defined against. */
+  /**
+   * EIP-8198: the slot duration that per-epoch rewards and churn are defined against. This is
+   * {@code SLOT_DURATION_MS} rather than the slot duration at genesis, so networks that activate
+   * Heze at genesis are still scaled.
+   */
   public int getBaseSlotDurationMillis() {
-    return miscHelpers.getSlotDurationMillis(GENESIS_EPOCH);
+    return configHeze.getSlotDurationMillis();
   }
 }

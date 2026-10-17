@@ -111,17 +111,18 @@ class BeaconStateAccessorsHezeTest {
   }
 
   @Test
-  void hezeAtGenesis_shouldNotScale() {
-    // #5718 scales against the genesis slot duration, which is the Heze one when Heze is at genesis
+  void hezeAtGenesis_shouldStillScale() {
+    // Scaling is against SLOT_DURATION_MS, not the slot duration at genesis, so a network that
+    // activates Heze at genesis with shorter slots is still scaled
     final Spec hezeAtGenesisSpec =
         TestSpecFactory.createMinimalHeze(builder -> builder.slotDurationMsHeze(5000));
     final BeaconStateAccessorsHeze hezeAtGenesisAccessors =
         BeaconStateAccessorsHeze.required(
             hezeAtGenesisSpec.getGenesisSpec().beaconStateAccessors());
 
-    assertThat(hezeAtGenesisAccessors.hasScaledSlotDuration(UInt64.valueOf(5))).isFalse();
-    assertThat(hezeAtGenesisAccessors.scaleBySlotDuration(UInt64.valueOf(600), UInt64.ONE))
-        .isEqualTo(UInt64.valueOf(600));
+    assertThat(hezeAtGenesisAccessors.hasScaledSlotDuration(UInt64.ZERO)).isTrue();
+    assertThat(hezeAtGenesisAccessors.scaleBySlotDuration(UInt64.valueOf(600), UInt64.ZERO))
+        .isEqualTo(UInt64.valueOf(500));
   }
 
   private UInt64 scaledAndRounded(final UInt64 churn) {
